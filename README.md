@@ -20,9 +20,10 @@ That is the case on lean4lean master as of `7842f38`; consumers just need an `op
 
 ## Target
 
-`Lean4LeanModel/Consistency.lean` states the goal: consistency of the type theory formalized in
-`Lean4Lean.Theory`, assuming `ω` inaccessible cardinals -- the soundness theorem of *The Type
-Theory of Lean*. It is `sorry`ed pending the model construction.
+`Lean4LeanModel/Consistency.lean` proves the final contradiction from semantic soundness for the
+type theory formalized in `Lean4Lean.Theory`, assuming `ω` inaccessible cardinals -- the soundness
+theorem of *The Type Theory of Lean*. Temporary declaration-model boundaries are isolated in
+`Lean4LeanModel/ModelConstructionDebt.lean`.
 
 The model is split into the following modules:
 
@@ -32,8 +33,9 @@ The model is split into the following modules:
   hierarchy interpreting Lean's universe levels.
 - `Lean4LeanModel.DependentFunction` defines dependent function graphs, abstraction, application,
   logical quantification, and the corresponding beta, eta, and universe-closure theorems.
-- `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's unique-typing and sort-inversion
-  results; CI rejects direct uses of that trust boundary elsewhere in the model.
+- `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's currently sorried
+  unique-typing and sort-inversion dependencies; CI rejects direct uses of that trust boundary
+  elsewhere in the model.
 - `Lean4LeanModel.Semantics` defines canonical Prop/Type and proof/data classification and the total
   structural interpretation of raw expressions.
 - `Lean4LeanModel.Context` relates dependent syntactic contexts to their semantic valuations.
@@ -47,9 +49,15 @@ The model is split into the following modules:
   definitionally equal local contexts.
 - `Lean4LeanModel.Fundamental` proves semantic soundness for every constructor of lean4lean's
   definitional-equality relation.
+- `Lean4LeanModel.ModelConstruction` builds assignments through definitions, opaque declarations,
+  and examples, and assembles them along a well-formed declaration history.
+- `Lean4LeanModel.ModelConstructionDebt` isolates the three remaining declaration boundaries:
+  arbitrary axioms, upstream-unspecified inductives, and the standard-compatible quotient model.
 
-The fundamental theorem is complete. The remaining consistency work is to construct an
-`Assignment` satisfying `Assignment.WF` along a `VEnv.WF` declaration history, then apply semantic
-soundness at the empty context and use the interpretation of `False` as the empty set. The naive
-target intentionally retains a localized hole for arbitrary axioms pending the final statement
-that admits Lean's standard axioms.
+The fundamental theorem and the final implication from a semantic model to consistency are
+complete. Definitions, opaque declarations, and examples have a concrete assignment construction.
+The present unrestricted `consistency` statement is nevertheless refutable by declaring an axiom
+of `VExpr.false`; its axiom-case `sorry` is an explicit statement placeholder pending the true
+standard-axiom formulation. Inductive declarations are genuinely blocked by the currently sorried
+upstream definitions. The quotient boundary deliberately avoids implementing an identity model
+that works for `addQuot` alone but would be discarded once `Quot.sound` is admitted.

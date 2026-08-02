@@ -1,4 +1,4 @@
-import Lean4LeanModel.CoreRules
+import Lean4LeanModel.ModelConstruction
 import Lean4Lean.Theory.Typing.Lemmas
 
 /-!
@@ -11,7 +11,9 @@ The type theory itself is the one formalized in `Lean4Lean.Theory`: `VExpr` is t
 `VEnv` the declaration environment, `VEnv.WF` says the environment was built by well-founded
 declarations (`VDecl.WF`), and `VEnv.HasType` is the typing judgment.
 
-Nothing here is proved yet; the model construction is what fills `sorry` in.
+The final contradiction is proved from semantic soundness. Local declaration-model placeholders are
+isolated in `ModelConstructionDebt`; the semantic stack also depends on the explicitly audited
+upstream `sorry` theorems described in `Upstream`.
 -/
 
 namespace Lean4LeanModel
@@ -21,14 +23,23 @@ open Lean4Lean
 universe u
 
 /--
-**Consistency of Lean.** Assuming `ω` inaccessible cardinals, no well-formed environment proves
-`∀ (p : Prop), p` -- in any number `U` of universe parameters, in the empty local context.
+**Naive consistency statement.** Assuming `ω` inaccessible cardinals, no well-formed environment
+proves `∀ (p : Prop), p` -- in any number `U` of universe parameters, in the empty local context.
 
-The declaration-model construction intentionally retains an explicit proof hole for arbitrary
-axioms while the final true statement admitting Lean's standard axioms is being specified.
+This unrestricted statement is refutable: a well-formed environment may declare an axiom of
+`VExpr.false`. Its axiom-case `sorry` is therefore a known-false statement placeholder, not an
+unfinished proof, while the true statement admitting Lean's standard axioms is being specified.
 -/
-theorem consistency (_ : OmegaInaccessibles.{u}) {env : VEnv} (_ : env.WF) (U : Nat) :
+theorem consistency (hlarge : OmegaInaccessibles.{u}) {env : VEnv} (henv : env.WF) (U : Nat) :
     ¬ ∃ e, env.HasType U [] e VExpr.false := by
-  sorry
+  obtain ⟨κ, hκ, hi⟩ := hlarge
+  obtain ⟨assignment, M⟩ := model_of_wf hκ hi henv
+  rintro ⟨e, he⟩
+  let L := List.replicate U 0
+  have heL : env.HasType L.length [] e VExpr.false := by
+    simpa [L] using he
+  have hmem := fundamental_hasType M heL trivial (ModelsCtx.nil (L := L))
+  rw [interp_false_eq_empty κ env assignment L] at hmem
+  simp at hmem
 
 end Lean4LeanModel
