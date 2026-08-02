@@ -11,7 +11,7 @@ lake exe cache get   # mathlib oleans
 lake build
 ```
 
-Everything is pinned at Lean `v4.30.0`: mathlib `v4.30.0`, lean4lean `master`.
+Everything is pinned at Lean `v4.30.0`: mathlib `v4.30.0`, lean4lean `7842f38`.
 
 Note that importing lean4lean alongside mathlib requires lean4lean's stdlib prelude
 (`Lean4Lean/Std/Basic.lean`) to live in the `Lean4Lean` namespace rather than the root one --
