@@ -6,4 +6,5 @@ import Lean4LeanModel.Semantics
 import Lean4LeanModel.Context
 import Lean4LeanModel.ModelSetup
 import Lean4LeanModel.CoreRules
+import Lean4LeanModel.Transport
 import Lean4LeanModel.Consistency

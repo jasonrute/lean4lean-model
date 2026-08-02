@@ -49,6 +49,22 @@ noncomputable def typeClass (env : VEnv) (Γ : List VExpr) (L : List Nat) (A : V
 noncomputable def termClass (env : VEnv) (Γ : List VExpr) (L : List Nat) (e : VExpr) : Nat :=
   classLevel (IsProofTerm env L.length Γ L e)
 
+/-- Total dispatch defaults to data outside a well-formed syntactic context. -/
+noncomputable def safeTypeClass (env : VEnv) (Γ : List VExpr) (L : List Nat) (A : VExpr) : Nat :=
+  by classical exact if OnCtx Γ (env.IsType L.length) then typeClass env Γ L A else 1
+
+/-- Total dispatch defaults to data outside a well-formed syntactic context. -/
+noncomputable def safeTermClass (env : VEnv) (Γ : List VExpr) (L : List Nat) (e : VExpr) : Nat :=
+  by classical exact if OnCtx Γ (env.IsType L.length) then termClass env Γ L e else 1
+
+theorem safeTypeClass_eq (hΓ : OnCtx Γ (env.IsType L.length)) :
+    safeTypeClass env Γ L A = typeClass env Γ L A := by
+  simp [safeTypeClass, hΓ]
+
+theorem safeTermClass_eq (hΓ : OnCtx Γ (env.IsType L.length)) :
+    safeTermClass env Γ L e = termClass env Γ L e := by
+  simp [safeTermClass, hΓ]
+
 @[simp]
 theorem typeClass_eq_zero {env : VEnv} {Γ : List VExpr} {L : List Nat} {A : VExpr} :
     typeClass env Γ L A = 0 ↔ IsPropType env L.length Γ L A := by
@@ -154,6 +170,66 @@ theorem IsProofTerm.mono {env env' : VEnv} {U : Nat} {Γ : List VExpr}
   rintro ⟨A, he, hA⟩
   exact ⟨A, he.mono hle, hA.mono hle⟩
 
+theorem IsPropType.liftN_iff {env : VEnv} {U n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {A : VExpr} (henv : env.WF)
+    (hΓ' : OnCtx Γ' (env.IsType U)) (W : Ctx.LiftN n k Γ Γ') :
+    IsPropType env U Γ' L (A.liftN n k) ↔ IsPropType env U Γ L A := by
+  constructor
+  · rintro ⟨u, hA, hu⟩
+    exact ⟨u, (Upstream.hasType_liftN_sort_iff henv hΓ' W).1 hA, hu⟩
+  · rintro ⟨u, hA, hu⟩
+    exact ⟨u, (Upstream.hasType_liftN_sort_iff henv hΓ' W).2 hA, hu⟩
+
+theorem IsProofTerm.liftN_iff {env : VEnv} {U n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {e : VExpr} (henv : env.WF)
+    (hΓ' : OnCtx Γ' (env.IsType U)) (W : Ctx.LiftN n k Γ Γ') :
+    IsProofTerm env U Γ' L (e.liftN n k) ↔ IsProofTerm env U Γ L e := by
+  have hΓ := Upstream.ctx_of_liftN henv hΓ' W
+  constructor
+  · rintro ⟨A', he', u, hA', hu⟩
+    obtain ⟨A, he, heW⟩ := Upstream.strengthen_liftN_typing henv hΓ' W he'
+    obtain ⟨v, hA⟩ := he.isType henv hΓ
+    have hvu := Upstream.termSort_eval_eq henv hΓ' heW (hA.weakN henv W) he' hA' L
+    exact ⟨A, he, v, hA, hvu.trans hu⟩
+  · rintro ⟨A, he, u, hA, hu⟩
+    exact ⟨A.liftN n k, he.weakN henv W, u, hA.weakN henv W, hu⟩
+
+theorem typeClass_weakN {env : VEnv} {n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {A : VExpr} (henv : env.WF)
+    (hΓ' : OnCtx Γ' (env.IsType L.length)) (W : Ctx.LiftN n k Γ Γ') :
+    typeClass env Γ' L (A.liftN n k) = typeClass env Γ L A := by
+  apply congrArg classLevel
+  exact propext (IsPropType.liftN_iff henv hΓ' W)
+
+theorem termClass_weakN {env : VEnv} {n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {e : VExpr} (henv : env.WF)
+    (hΓ' : OnCtx Γ' (env.IsType L.length)) (W : Ctx.LiftN n k Γ Γ') :
+    termClass env Γ' L (e.liftN n k) = termClass env Γ L e := by
+  apply congrArg classLevel
+  exact propext (IsProofTerm.liftN_iff henv hΓ' W)
+
+theorem safeTypeClass_weakN {env : VEnv} {n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {A : VExpr} (henv : env.WF) (W : Ctx.LiftN n k Γ Γ')
+    (hctx : OnCtx Γ' (env.IsType L.length) ↔ OnCtx Γ (env.IsType L.length)) :
+    safeTypeClass env Γ' L (A.liftN n k) = safeTypeClass env Γ L A := by
+  classical
+  by_cases hΓ' : OnCtx Γ' (env.IsType L.length)
+  · have hΓ := hctx.1 hΓ'
+    simp [safeTypeClass, hΓ', hΓ, typeClass_weakN henv hΓ' W]
+  · have hΓ : ¬OnCtx Γ (env.IsType L.length) := fun h => hΓ' (hctx.2 h)
+    simp [safeTypeClass, hΓ', hΓ]
+
+theorem safeTermClass_weakN {env : VEnv} {n k : Nat} {Γ Γ' : List VExpr}
+    {L : List Nat} {e : VExpr} (henv : env.WF) (W : Ctx.LiftN n k Γ Γ')
+    (hctx : OnCtx Γ' (env.IsType L.length) ↔ OnCtx Γ (env.IsType L.length)) :
+    safeTermClass env Γ' L (e.liftN n k) = safeTermClass env Γ L e := by
+  classical
+  by_cases hΓ' : OnCtx Γ' (env.IsType L.length)
+  · have hΓ := hctx.1 hΓ'
+    simp [safeTermClass, hΓ', hΓ, termClass_weakN henv hΓ' W]
+  · have hΓ : ¬OnCtx Γ (env.IsType L.length) := fun h => hΓ' (hctx.2 h)
+    simp [safeTermClass, hΓ', hΓ]
+
 /-- Proposition classification is invariant under definitional equality of types. -/
 theorem IsPropType.congr {env : VEnv} {U : Nat} {Γ : List VExpr} {L : List Nat}
     {A A' : VExpr} {u : VLevel} (henv : env.WF) (hΓ : OnCtx Γ (env.IsType U))
@@ -219,17 +295,17 @@ noncomputable def interp (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : 
   | .bvar i => γ.getD i bullet
   | .sort l => interpLevel κ L l
   | .const c ls =>
-      if termClass env Γ L (.const c ls) = 0 then bullet
+      if safeTermClass env Γ L (.const c ls) = 0 then bullet
       else assignment.constVal c (ls.map (VLevel.eval L))
   | .app f a =>
-      appValue (termClass env Γ L f)
+      appValue (safeTermClass env Γ L f)
         (interp κ env assignment L Γ γ f) (interp κ env assignment L Γ γ a)
   | .lam A body =>
-      lamValue (termClass env (A :: Γ) L body)
+      lamValue (safeTermClass env (A :: Γ) L body)
         (interp κ env assignment L Γ γ A)
         (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body)
   | .forallE A body =>
-      piValue (typeClass env (A :: Γ) L body)
+      piValue (safeTypeClass env (A :: Γ) L body)
         (interp κ env assignment L Γ γ A)
         (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body)
 
@@ -247,21 +323,21 @@ theorem interp_sort (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assig
 theorem interp_const (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assignment.{u})
     (L : List Nat) (Γ : List VExpr) (γ : List ZFSet.{u}) (c : Name) (ls : List VLevel) :
     interp κ env assignment L Γ γ (.const c ls) =
-      if termClass env Γ L (.const c ls) = 0 then bullet
+      if safeTermClass env Γ L (.const c ls) = 0 then bullet
       else assignment.constVal c (ls.map (VLevel.eval L)) := rfl
 
 @[simp]
 theorem interp_app (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assignment.{u})
     (L : List Nat) (Γ : List VExpr) (γ : List ZFSet.{u}) (f a : VExpr) :
     interp κ env assignment L Γ γ (.app f a) =
-      appValue (termClass env Γ L f)
+      appValue (safeTermClass env Γ L f)
         (interp κ env assignment L Γ γ f) (interp κ env assignment L Γ γ a) := rfl
 
 @[simp]
 theorem interp_lam (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assignment.{u})
     (L : List Nat) (Γ : List VExpr) (γ : List ZFSet.{u}) (A body : VExpr) :
     interp κ env assignment L Γ γ (.lam A body) =
-      lamValue (termClass env (A :: Γ) L body)
+      lamValue (safeTermClass env (A :: Γ) L body)
         (interp κ env assignment L Γ γ A)
         (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body) := rfl
 
@@ -269,7 +345,7 @@ theorem interp_lam (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assign
 theorem interp_forallE (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assignment.{u})
     (L : List Nat) (Γ : List VExpr) (γ : List ZFSet.{u}) (A body : VExpr) :
     interp κ env assignment L Γ γ (.forallE A body) =
-      piValue (typeClass env (A :: Γ) L body)
+      piValue (safeTypeClass env (A :: Γ) L body)
         (interp κ env assignment L Γ γ A)
         (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body) := rfl
 
@@ -283,7 +359,7 @@ example : interp κ env assignment L Γ γ (.sort .zero) = propUniverse := by
 
 example (A body : VExpr) :
     interp κ env assignment L Γ γ (.forallE A body) =
-      piValue (typeClass env (A :: Γ) L body)
+      piValue (safeTypeClass env (A :: Γ) L body)
         (interp κ env assignment L Γ γ A)
         (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body) := by
   rfl

@@ -38,6 +38,7 @@ theorem satisfies_forallE {κ : ℕ → Cardinal.{u}} {env : VEnv}
       Satisfies κ env assignment L (A :: Γ) (x :: γ) B (.sort vLvl)) :
     Satisfies κ env assignment L Γ γ (.forallE A B) (.sort (.imax uLvl vLvl)) := by
   have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, ⟨uLvl, hAty⟩⟩
+  simp only [Satisfies, interp_forallE, interp_sort, safeTypeClass_eq hΓA]
   change piValue (typeClass env (A :: Γ) L B)
       (interp κ env assignment L Γ γ A)
       (fun x => interp κ env assignment L (A :: Γ) (x :: γ) B) ∈
@@ -63,6 +64,8 @@ theorem satisfies_lam {κ : ℕ → Cardinal.{u}} {env : VEnv}
   have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, ⟨uLvl, hAty⟩⟩
   have hclass : termClass env (A :: Γ) L body = typeClass env (A :: Γ) L B :=
     termClass_eq_typeClass_of_hasType henv hΓA hbodyTy hBty
+  simp only [Satisfies, interp_lam, interp_forallE, safeTermClass_eq hΓA,
+    safeTypeClass_eq hΓA]
   change lamValue (termClass env (A :: Γ) L body)
       (interp κ env assignment L Γ γ A)
       (fun x => interp κ env assignment L (A :: Γ) (x :: γ) body) ∈
@@ -93,16 +96,23 @@ theorem satisfies_app_fiber {κ : ℕ → Cardinal.{u}} {env : VEnv}
         (interp κ env assignment L Γ γ a :: γ) B := by
   have hAB : env.HasType L.length Γ (.forallE A B) (.sort (.imax uLvl vLvl)) :=
     .forallEDF hAty hBty
+  have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, ⟨uLvl, hAty⟩⟩
+  have hf' : interp κ env assignment L Γ γ f ∈
+      piValue (typeClass env (A :: Γ) L B)
+        (interp κ env assignment L Γ γ A)
+        (fun x => interp κ env assignment L (A :: Γ) (x :: γ) B) := by
+    simpa only [Satisfies, interp_forallE, safeTypeClass_eq hΓA] using hf
   have hclass : termClass env Γ L f = typeClass env (A :: Γ) L B := by
     calc
       termClass env Γ L f = typeClass env Γ L (.forallE A B) :=
         termClass_eq_typeClass_of_hasType henv hΓ hfty hAB
       _ = typeClass env (A :: Γ) L B := typeClass_forallE henv hΓ hAty hBty
+  rw [interp_app, safeTermClass_eq hΓ]
   change appValue (termClass env Γ L f)
       (interp κ env assignment L Γ γ f) (interp κ env assignment L Γ γ a) ∈
     interp κ env assignment L (A :: Γ) (interp κ env assignment L Γ γ a :: γ) B
   rw [hclass]
-  exact appValue_mem hf ha
+  exact appValue_mem hf' ha
 
 /-- The environment-independent false proposition denotes the empty truth value. -/
 theorem interp_false_eq_empty (κ : ℕ → Cardinal.{u}) (env : VEnv)
@@ -111,8 +121,11 @@ theorem interp_false_eq_empty (κ : ℕ → Cardinal.{u}) (env : VEnv)
   have hclass : typeClass env [.sort .zero] L (.bvar 0) = 0 := by
     rw [typeClass_eq_zero]
     exact ⟨.zero, .bvar .zero, rfl⟩
+  have hctx : OnCtx [.sort .zero] (env.IsType L.length) := by
+    refine ⟨trivial, .succ .zero, ?_⟩
+    exact .sortDF (by trivial) (by trivial) rfl
   rw [show VExpr.false = .forallE (.sort .zero) (.bvar 0) from rfl, interp_forallE]
-  simp only [interp_sort, hclass, piValue, if_pos]
+  simp only [interp_sort, safeTypeClass_eq hctx, hclass, piValue, if_pos]
   rw [forallValue]
   apply truthValue_of_neg
   intro h
