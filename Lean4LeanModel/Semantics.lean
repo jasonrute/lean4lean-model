@@ -16,6 +16,9 @@ open Lean4Lean
 
 universe u
 
+/-- `∀ (p : Prop), p`, an environment-independent false proposition. -/
+def VExpr.false : VExpr := .forallE (.sort .zero) (.bvar 0)
+
 /-- A type expression is proposition-valued at the supplied universe valuation. -/
 def IsPropType (env : VEnv) (U : Nat) (Γ : List VExpr) (L : List Nat) (A : VExpr) : Prop :=
   ∃ l, env.HasType U Γ A (.sort l) ∧ l.eval L = 0

@@ -1,4 +1,4 @@
-import Lean4LeanModel.Universe
+import Lean4LeanModel.CoreRules
 import Lean4Lean.Theory.Typing.Lemmas
 
 /-!
@@ -19,14 +19,6 @@ namespace Lean4LeanModel
 open Lean4Lean
 
 universe u
-
-/--
-`∀ (α : Sort 0), α`, i.e. `∀ (p : Prop), p`.
-
-This is the environment-independent stand-in for `False`: a `VEnv` need not contain the `False`
-inductive at all, and any proof of `False` in an environment that does yields a proof of this.
--/
-def VExpr.false : VExpr := .forallE (.sort .zero) (.bvar 0)
 
 /--
 **Consistency of Lean.** Assuming `ω` inaccessible cardinals, no well-formed environment proves
