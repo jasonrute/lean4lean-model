@@ -236,6 +236,32 @@ noncomputable def lamValue (n : Nat) (A : ZFSet.{u})
 noncomputable def appValue (n : Nat) (f a : ZFSet.{u}) : ZFSet.{u} :=
   if n = 0 then bullet else depApp f a
 
+/-- Dispatch depends only on whether the supplied class is zero. -/
+theorem piValue_congr_zero {n m : Nat} (h : (n = 0 ↔ m = 0))
+    (A : ZFSet.{u}) (B : ZFSet.{u} → ZFSet.{u}) :
+    piValue n A B = piValue m A B := by
+  by_cases hn : n = 0
+  · simp [piValue, hn, h.1 hn]
+  · have hm : m ≠ 0 := fun hm => hn (h.2 hm)
+    simp [piValue, hn, hm]
+
+/-- Dispatch depends only on whether the supplied class is zero. -/
+theorem lamValue_congr_zero {n m : Nat} (h : (n = 0 ↔ m = 0))
+    (A : ZFSet.{u}) (f : ZFSet.{u} → ZFSet.{u}) :
+    lamValue n A f = lamValue m A f := by
+  by_cases hn : n = 0
+  · simp [lamValue, hn, h.1 hn]
+  · have hm : m ≠ 0 := fun hm => hn (h.2 hm)
+    simp [lamValue, hn, hm]
+
+/-- Dispatch depends only on whether the supplied class is zero. -/
+theorem appValue_congr_zero {n m : Nat} (h : (n = 0 ↔ m = 0))
+    (f a : ZFSet.{u}) : appValue n f a = appValue m f a := by
+  by_cases hn : n = 0
+  · simp [appValue, hn, h.1 hn]
+  · have hm : m ≠ 0 := fun hm => hn (h.2 hm)
+    simp [appValue, hn, hm]
+
 theorem piValue_congr {n : Nat} {A : ZFSet.{u}} {B B' : ZFSet.{u} → ZFSet.{u}}
     (h : ∀ a ∈ A, B a = B' a) : piValue n A B = piValue n A B' := by
   by_cases hn : n = 0
@@ -351,6 +377,16 @@ theorem piValue_mem_ModelUniverse {κ : ℕ → Cardinal.{u}}
   cases n with
   | zero => simpa [piValue, Nat.imax] using forallValue_mem_propUniverse A B
   | succ n => simpa [piValue, Nat.imax] using depFuns_mem_ModelUniverse hκ hi hA hB
+
+/-- Universe closure with a dispatcher represented independently from the true universe index. -/
+theorem piValue_mem_ModelUniverse_of_zero_iff {κ : ℕ → Cardinal.{u}}
+    (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
+    {k m n : Nat} {A : ZFSet.{u}} {B : ZFSet.{u} → ZFSet.{u}}
+    (hk : k = 0 ↔ n = 0)
+    (hA : A ∈ ModelUniverse κ m) (hB : ∀ a ∈ A, B a ∈ ModelUniverse κ n) :
+    piValue k A B ∈ ModelUniverse κ (Nat.imax m n) := by
+  rw [piValue_congr_zero hk A B]
+  exact piValue_mem_ModelUniverse hκ hi hA hB
 
 section SanityChecks
 

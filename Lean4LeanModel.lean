@@ -1,4 +1,6 @@
 import Lean4LeanModel.Grothendieck
 import Lean4LeanModel.Universe
 import Lean4LeanModel.DependentFunction
+import Lean4LeanModel.Upstream
+import Lean4LeanModel.Semantics
 import Lean4LeanModel.Consistency

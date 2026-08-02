@@ -17,3 +17,15 @@ if ((${#unexpected[@]})); then
   printf '  %s\n' "${unexpected[@]}" >&2
   exit 1
 fi
+
+# Keep reliance on upstream unique typing and its sorried inversion dependency auditable.
+mapfile -t boundary_leaks < <(
+  grep -RInE --include='*.lean' '\.uniq([[:space:](]|$)|IsDefEqU\.sort_inv|IsDefEqU\.weakN_iff|addInduct_WF' \
+    Lean4LeanModel --exclude='Upstream.lean' || true
+)
+
+if ((${#boundary_leaks[@]})); then
+  echo 'Upstream metatheory escaped Lean4LeanModel/Upstream.lean:' >&2
+  printf '  %s\n' "${boundary_leaks[@]}" >&2
+  exit 1
+fi
