@@ -1,0 +1,18 @@
+name = "lean4lean-model"
+defaultTargets = ["Lean4LeanModel"]
+
+# Mathlib is required first on purpose: lake resolves a shared transitive
+# dependency (batteries) to the first pin it encounters, and mathlib's pin is
+# the more constrained of the two.
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "v4.30.0"
+
+[[require]]
+name = "lean4lean"
+git = "https://github.com/digama0/lean4lean"
+rev = "master"
+
+[[lean_lib]]
+name = "Lean4LeanModel"
