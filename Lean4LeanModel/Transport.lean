@@ -236,4 +236,105 @@ theorem interp_inst {κ : ℕ → Cardinal.{u}} {env : VEnv} {assignment : Assig
   have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, hA⟩
   exact interp_instN (W := Ctx.InstN.zero) henv hΓA hΓ ha ValInstN.zero e he
 
+/-! ## Universe-level instantiation -/
+
+theorem safeTermClass_instL {env : VEnv} {L : List Nat} {ls : List VLevel}
+    {Γ : List VExpr} {e : VExpr} (henv : env.WF)
+    (hls : ∀ l ∈ ls, l.WF L.length) (hΓ : OnCtx Γ (env.IsType ls.length))
+    (he : e.WF env ls.length Γ) :
+    safeTermClass env (Γ.map (VExpr.instL ls)) L (e.instL ls) =
+      safeTermClass env Γ (ls.map (VLevel.eval L)) e := by
+  have hΓi := hΓ.instL hls
+  let ns := ls.map (VLevel.eval L)
+  have hlen : ns.length = ls.length := by simp [ns]
+  have hΓs : OnCtx Γ (env.IsType ns.length) := by simpa [hlen] using hΓ
+  obtain ⟨A, heA⟩ := he
+  obtain ⟨u, hA⟩ := heA.isType henv hΓ
+  have heAs : env.HasType ns.length Γ e A := by simpa [hlen] using heA
+  have hAs : env.HasType ns.length Γ A (.sort u) := by simpa [hlen] using hA
+  rw [safeTermClass_eq hΓi]
+  rw [safeTermClass_eq hΓs]
+  unfold termClass
+  apply congrArg classLevel
+  apply propext
+  rw [isProofTerm_iff_of_hasType henv hΓi (heA.instL hls) (hA.instL hls)]
+  rw [isProofTerm_iff_of_hasType henv hΓs heAs hAs]
+  simp [ns, VLevel.eval_inst]
+
+theorem safeTypeClass_instL {env : VEnv} {L : List Nat} {ls : List VLevel}
+    {Γ : List VExpr} {A : VExpr} (henv : env.WF)
+    (hls : ∀ l ∈ ls, l.WF L.length) (hΓ : OnCtx Γ (env.IsType ls.length))
+    (hAty : env.IsType ls.length Γ A) :
+    safeTypeClass env (Γ.map (VExpr.instL ls)) L (A.instL ls) =
+      safeTypeClass env Γ (ls.map (VLevel.eval L)) A := by
+  have hΓi := hΓ.instL hls
+  let ns := ls.map (VLevel.eval L)
+  have hlen : ns.length = ls.length := by simp [ns]
+  have hΓs : OnCtx Γ (env.IsType ns.length) := by simpa [hlen] using hΓ
+  obtain ⟨u, hA⟩ := hAty
+  have hAs : env.HasType ns.length Γ A (.sort u) := by simpa [hlen] using hA
+  rw [safeTypeClass_eq hΓi]
+  rw [safeTypeClass_eq hΓs]
+  unfold typeClass
+  apply congrArg classLevel
+  apply propext
+  rw [isPropType_iff_of_hasType henv hΓi (hA.instL hls)]
+  rw [isPropType_iff_of_hasType henv hΓs hAs]
+  simp [ns, VLevel.eval_inst]
+
+theorem interp_instL {κ : ℕ → Cardinal.{u}} {env : VEnv} {assignment : Assignment.{u}}
+    {L : List Nat} {ls : List VLevel} {Γ : List VExpr} {γ : List ZFSet.{u}}
+    (henv : env.WF) (hls : ∀ l ∈ ls, l.WF L.length)
+    (hΓ : OnCtx Γ (env.IsType ls.length)) (e : VExpr) (he : e.WF env ls.length Γ) :
+    interp κ env assignment L (Γ.map (VExpr.instL ls)) γ (e.instL ls) =
+      interp κ env assignment (ls.map (VLevel.eval L)) Γ γ e := by
+  induction e generalizing Γ γ with
+  | bvar i => rfl
+  | sort l => exact interpLevel_inst κ L ls l
+  | const c us =>
+    simp only [VExpr.instL, interp_const]
+    have hc := safeTermClass_instL henv hls hΓ he
+    have hus : us.map (VLevel.eval (ls.map (VLevel.eval L))) =
+        (us.map (VLevel.inst ls)).map (VLevel.eval L) := by
+      simp [VLevel.eval_inst]
+    rw [hus]
+    simpa only [VExpr.instL] using congrArg
+      (fun q => if q = 0 then bullet
+        else assignment.constVal c ((us.map (VLevel.inst ls)).map (VLevel.eval L))) hc
+  | app f a ihf iha =>
+    obtain ⟨A, B, hf, ha⟩ := he.app_inv henv hΓ
+    simp only [VExpr.instL, interp_app]
+    rw [safeTermClass_instL henv hls hΓ ⟨_, hf⟩,
+      ihf hΓ ⟨_, hf⟩, iha hΓ ⟨_, ha⟩]
+  | lam A body ihA ihbody =>
+    obtain ⟨hA, hbody⟩ := he.lam_inv henv hΓ
+    have hAwf : A.WF env ls.length Γ := by
+      obtain ⟨u, hu⟩ := hA
+      exact ⟨.sort u, hu⟩
+    have hΓA : OnCtx (A :: Γ) (env.IsType ls.length) := ⟨hΓ, hA⟩
+    simp only [VExpr.instL, List.map_cons, interp_lam]
+    have hc := safeTermClass_instL henv hls hΓA hbody
+    simp only [List.map_cons] at hc
+    rw [hc, ihA hΓ hAwf]
+    apply lamValue_congr
+    intro x _
+    exact ihbody hΓA hbody
+  | forallE A body ihA ihbody =>
+    obtain ⟨V, hfor⟩ := he
+    obtain ⟨hA, hbody⟩ := VEnv.HasType.forallE_inv henv hfor
+    have hAwf : A.WF env ls.length Γ := by
+      obtain ⟨u, hu⟩ := hA
+      exact ⟨.sort u, hu⟩
+    have hbodywf : body.WF env ls.length (A :: Γ) := by
+      obtain ⟨v, hv⟩ := hbody
+      exact ⟨.sort v, hv⟩
+    have hΓA : OnCtx (A :: Γ) (env.IsType ls.length) := ⟨hΓ, hA⟩
+    simp only [VExpr.instL, List.map_cons, interp_forallE]
+    have hc := safeTypeClass_instL henv hls hΓA hbody
+    simp only [List.map_cons] at hc
+    rw [hc, ihA hΓ hAwf]
+    apply piValue_congr
+    intro x _
+    exact ihbody hΓA hbodywf
+
 end Lean4LeanModel
