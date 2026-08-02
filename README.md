@@ -41,6 +41,9 @@ The model is split into the following modules:
 - `Lean4LeanModel.Context` relates dependent syntactic contexts to their semantic valuations.
 - `Lean4LeanModel.ModelSetup` packages the inaccessible hierarchy, well-formed environment, and
   semantic obligations for constant assignments and primitive definitional equations.
+- `Lean4LeanModel.StandardAxioms` identifies the exact declarations of `propext`,
+  `Classical.choice`, and `Quot.sound`, and provides a predicate-agnostic way to state that a
+  declaration history contains no other axioms.
 - `Lean4LeanModel.CoreRules` proves the compositional semantic universe, product, abstraction, and
   application rules used by the fundamental theorem.
 - `Lean4LeanModel.Transport` proves semantic weakening, substitution, and universe-level
@@ -50,14 +53,20 @@ The model is split into the following modules:
 - `Lean4LeanModel.Fundamental` proves semantic soundness for every constructor of lean4lean's
   definitional-equality relation.
 - `Lean4LeanModel.ModelConstruction` builds assignments through definitions, opaque declarations,
-  and examples, and assembles them along a well-formed declaration history.
+  and examples, assembles them along a well-formed declaration history, and exposes an axiom
+  construction hook independently of the eventual allowed-axiom predicate.
 - `Lean4LeanModel.ModelConstructionDebt` isolates the three remaining declaration boundaries:
   arbitrary axioms, upstream-unspecified inductives, and the standard-compatible quotient model.
 
 The fundamental theorem and the final implication from a semantic model to consistency are
 complete. Definitions, opaque declarations, and examples have a concrete assignment construction.
 The present unrestricted `consistency` statement is nevertheless refutable by declaring an axiom
-of `VExpr.false`; its axiom-case `sorry` is an explicit statement placeholder pending the true
-standard-axiom formulation. Inductive declarations are genuinely blocked by the currently sorried
-upstream definitions. The quotient boundary deliberately avoids implementing an identity model
-that works for `addQuot` alone but would be discarded once `Quot.sound` is admitted.
+of `VExpr.false`; its axiom-case `sorry` is retained only for that backwards-compatible statement.
+The standard-axiom path instead accepts any policy implying that each axiom is exactly `propext`,
+`Classical.choice`, or `Quot.sound`, and routes those declarations through a dedicated construction
+hook. That hook cannot yet be implemented because its meanings depend on the still-pending
+canonical inductive and genuine quotient interpretations; in particular, mere well-formedness does
+not fix the interpretations of `Eq`, `Iff`, or `Nonempty`.
+Inductive declarations are genuinely blocked by the currently sorried upstream definitions. The
+quotient boundary deliberately avoids implementing an identity model that works for `addQuot`
+alone but would be discarded once `Quot.sound` is admitted.

@@ -1,4 +1,5 @@
 import Lean4LeanModel.ModelConstructionDebt
+import Lean4LeanModel.StandardAxioms
 
 /-! # Construction of semantic assignments -/
 
@@ -188,6 +189,81 @@ theorem assignmentWF_addConst_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
         simpa [hns] using show df.rhs.WF env df.uvars [] from ⟨df.type, hr⟩)
     exact hlExt.trans (hOld.trans hrExt.symm)
 
+/-! ## Semantic axiom interface -/
+
+/-- A semantic value for an axiom declaration, stated in the environment before the declaration is
+added. `model_addAxiom` transports the type interpretation to the extended environment. -/
+structure AxiomMeaning (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assignment.{u})
+    (ci : VConstVal) where
+  value : List Nat → ZFSet.{u}
+  valid : ∀ ns, ns.length = ci.uvars →
+    value ns ∈ interp κ env assignment ns [] [] ci.type
+
+/-- A handler is the only interface the declaration-history induction needs for axioms. The
+predicate `P` is completely abstract, so an upstream allowed-axiom condition only needs to provide
+an adapter to a suitable handler. -/
+def AxiomHandler (κ : ℕ → Cardinal.{u}) (P : VConstVal → Prop) : Prop :=
+  ∀ {env env' : VEnv} {assignment : Assignment.{u}} {ci : VConstVal},
+    ModelSetup κ env assignment →
+    ci.toVConstant.WF env →
+    env.addConst ci.name ci.toVConstant = some env' →
+    env'.WF → P ci →
+    ∃ assignment', ModelSetup κ env' assignment'
+
+/-- Add an axiom for which a semantic meaning has been supplied. -/
+theorem model_addAxiom {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
+    {assignment : Assignment.{u}} {ci : VConstVal}
+    (M : ModelSetup κ env assignment) (hci : ci.toVConstant.WF env)
+    (hadd : env.addConst ci.name ci.toVConstant = some env') (henv' : env'.WF)
+    (meaning : AxiomMeaning κ env assignment ci) :
+    ∃ assignment', ModelSetup κ env' assignment' := by
+  let assignment' := assignment.set ci.name meaning.value
+  have hle := VEnv.addConst_le hadd
+  have hext : Assignment.Extends env assignment assignment' :=
+    Assignment.Extends.set_of_addConst _ hadd
+  obtain ⟨lvl, htype⟩ := hci
+  have htypeWF : ci.type.WF env ci.uvars [] := ⟨.sort lvl, htype⟩
+  refine ⟨assignment', M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_⟩
+  apply assignmentWF_addConst_sem meaning.value M hadd henv'
+  intro ns hns
+  have htypeExt := interp_extension (κ := κ) hle M.envWF henv' hext
+    (L := ns) (Γ := []) (γ := []) trivial ci.type (by simpa [hns] using htypeWF)
+  simpa [assignment'] using htypeExt.symm ▸ meaning.valid ns hns
+
+namespace AxiomMeaning
+
+/-- A provider constructs semantic meanings for every axiom satisfying `P`. -/
+def Provider (κ : ℕ → Cardinal.{u}) (P : VConstVal → Prop) :=
+  ∀ {env : VEnv} {assignment : Assignment.{u}} {ci : VConstVal},
+    P ci → ModelSetup κ env assignment → ci.toVConstant.WF env →
+    AxiomMeaning κ env assignment ci
+
+/-- Restrict a provider along an implication between axiom predicates. -/
+def Provider.map {κ : ℕ → Cardinal.{u}} {P Q : VConstVal → Prop}
+    (provider : Provider κ Q) (hpq : ∀ ci, P ci → Q ci) : Provider κ P := by
+  intro env assignment ci hP M hci
+  exact provider (hpq ci hP) M hci
+
+/-- Every provider induces the handler consumed by declaration-history construction. -/
+def Provider.toHandler {κ : ℕ → Cardinal.{u}} {P : VConstVal → Prop}
+    (provider : Provider κ P) : AxiomHandler κ P := by
+  intro env env' assignment ci M hci hadd henv' hP
+  exact model_addAxiom M hci hadd henv' (provider hP M hci)
+
+end AxiomMeaning
+
+namespace StandardAxiom
+
+/-- The construction hook required for histories containing only the standard three axioms.
+
+This is intentionally a handler, rather than three meanings quantified over arbitrary
+`ModelSetup`s. The latter would be unprovable until the model records canonical interpretations of
+`Eq`, `Iff`, `Nonempty`, and quotients. The future inductive/quotient construction can establish
+that stronger invariant and implement this hook without changing the policy-facing API. -/
+abbrev Handler (κ : ℕ → Cardinal.{u}) := AxiomHandler κ IsStandardAxiom
+
+end StandardAxiom
+
 /-- A stored, well-typed declaration value supplies the meaning of a newly added constant. -/
 theorem assignmentWF_addConst {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}} {name : Name} {ci : VConstant} {value : VExpr}
@@ -325,11 +401,14 @@ theorem assignmentWF_addDefEq {κ : ℕ → Cardinal.{u}} {env : VEnv}
 
 /-! ## Declaration-history construction -/
 
-/-- Build a semantic assignment along a well-formed declaration history. Definitions and opaque
-constants use their stored well-typed values; examples do not alter the environment. -/
-theorem model_of_wfHistory {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
-    (hi : ∀ n, (κ n).IsInaccessible) {ds : List VDecl} {env : VEnv}
-    (H : VEnv.WF' ds env) : ∃ assignment, ModelSetup κ env assignment := by
+/-- Build a semantic assignment along a well-formed declaration history using an abstract axiom
+predicate and handler. Definitions and opaque constants use their stored values; examples do not
+alter the environment. -/
+theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal → Prop}
+    (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : AxiomHandler κ P) {ds : List VDecl} {env : VEnv}
+    (H : VEnv.WF' ds env) (haxioms : AxiomsSatisfy P ds) :
+    ∃ assignment, ModelSetup κ env assignment := by
   induction H with
   | empty =>
     refine ⟨Assignment.empty, hκ, hi, ⟨[], .empty⟩, ?_⟩
@@ -339,11 +418,11 @@ theorem model_of_wfHistory {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
     · intro df ns hdf
       exact False.elim hdf
   | @decl d env' ds env hd hds ih =>
-    obtain ⟨assignment, M⟩ := ih
+    obtain ⟨assignment, M⟩ := ih haxioms.tail
     have henv' : env'.WF := ⟨d :: ds, .decl hd hds⟩
     cases hd with
     | «axiom» hci hadd =>
-      exact model_axiom_boundary M hci hadd henv'
+      exact handler M hci hadd henv' haxioms.head
     | @«def» env₁ env ci hci hadd =>
       let assignment₁ := assignment.set ci.name fun ns =>
         interp κ env assignment ns [] [] ci.value
@@ -380,6 +459,37 @@ theorem model_of_wfHistory {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
       exact model_quotient_boundary M hready hadd henv'
     | induct hdecl hadd =>
       exact model_inductive_boundary M hdecl hadd henv'
+
+/-- Build a model when every axiom in the history is one of the standard three and semantic
+meanings for those declarations are available. -/
+theorem model_of_wfHistory_standard {κ : ℕ → Cardinal.{u}}
+    (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : StandardAxiom.Handler κ) {ds : List VDecl} {env : VEnv}
+    (H : VEnv.WF' ds env) (haxioms : AxiomsSatisfy IsStandardAxiom ds) :
+    ∃ assignment, ModelSetup κ env assignment :=
+  model_of_wfHistory_withAxioms hκ hi handler H haxioms
+
+/-- Adapter form for any proposed upstream predicate `P`: it is enough to show that `P` permits
+only the canonical standard declarations. -/
+theorem model_of_wfHistory_of_axiomPredicate {κ : ℕ → Cardinal.{u}}
+    {P : VConstVal → Prop} (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : StandardAxiom.Handler κ)
+    (toStandard : ∀ ci, P ci → IsStandardAxiom ci)
+    {ds : List VDecl} {env : VEnv} (H : VEnv.WF' ds env)
+    (haxioms : AxiomsSatisfy P ds) :
+    ∃ assignment, ModelSetup κ env assignment :=
+  model_of_wfHistory_standard hκ hi handler H (haxioms.mono toStandard)
+
+/-- Build a semantic assignment along an unrestricted well-formed declaration history. The false
+arbitrary-axiom case remains isolated in `ModelConstructionDebt`; callers with an allowed-axiom
+condition should use `model_of_wfHistory_withAxioms` instead. -/
+theorem model_of_wfHistory {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
+    (hi : ∀ n, (κ n).IsInaccessible) {ds : List VDecl} {env : VEnv}
+    (H : VEnv.WF' ds env) : ∃ assignment, ModelSetup κ env assignment := by
+  refine model_of_wfHistory_withAxioms hκ hi (P := fun _ => True) ?_ H ?_
+  · intro env env' assignment ci M hci hadd henv' _
+    exact model_axiom_boundary M hci hadd henv'
+  · exact fun _ _ => trivial
 
 /-- Every well-formed environment has a semantic assignment, modulo the explicitly isolated
 axiom, quotient, and upstream-inductive boundaries above. -/

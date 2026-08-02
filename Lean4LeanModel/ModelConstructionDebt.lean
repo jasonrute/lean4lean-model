@@ -4,10 +4,11 @@ import Lean4Lean.Theory.Typing.Env
 /-!
 # Explicit declaration-model boundaries
 
-These are the only local proof holes in the stage-8 construction. The axiom theorem is a known-false
-placeholder for the forthcoming standard-axiom statement, the inductive theorem is blocked by
-upstream `sorry` definitions, and the quotient theorem deliberately postpones a temporary model.
-They are kept in a dedicated module so CI can reject accidental proof debt everywhere else.
+These are the only local proof holes in the construction. The axiom theorem is retained solely for
+the backwards-compatible unrestricted statement; `model_of_wfHistory_standard` bypasses it via
+explicit meanings for the standard three. The inductive theorem is blocked by upstream `sorry`
+definitions, and the quotient theorem deliberately postpones a temporary model. They are kept in a
+dedicated module so CI can reject accidental proof debt everywhere else.
 -/
 
 namespace Lean4LeanModel
