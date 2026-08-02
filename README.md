@@ -24,7 +24,7 @@ That is the case on lean4lean master as of `7842f38`; consumers just need an `op
 `Lean4Lean.Theory`, assuming `ω` inaccessible cardinals -- the soundness theorem of *The Type
 Theory of Lean*. It is `sorry`ed pending the model construction.
 
-The first model layers are split into eight modules:
+The model is split into the following modules:
 
 - `Lean4LeanModel.Grothendieck` proves the rank, cardinality, replacement, bounded-union, product,
   and function-graph closure properties of `V_ κ.ord` for inaccessible `κ`.
@@ -41,3 +41,15 @@ The first model layers are split into eight modules:
   semantic obligations for constant assignments and primitive definitional equations.
 - `Lean4LeanModel.CoreRules` proves the compositional semantic universe, product, abstraction, and
   application rules used by the fundamental theorem.
+- `Lean4LeanModel.Transport` proves semantic weakening, substitution, and universe-level
+  instantiation.
+- `Lean4LeanModel.ContextConversion` proves invariance of classifiers and interpretation under
+  definitionally equal local contexts.
+- `Lean4LeanModel.Fundamental` proves semantic soundness for every constructor of lean4lean's
+  definitional-equality relation.
+
+The fundamental theorem is complete. The remaining consistency work is to construct an
+`Assignment` satisfying `Assignment.WF` along a `VEnv.WF` declaration history, then apply semantic
+soundness at the empty context and use the interpretation of `False` as the empty set. The naive
+target intentionally retains a localized hole for arbitrary axioms pending the final statement
+that admits Lean's standard axioms.

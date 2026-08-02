@@ -337,4 +337,25 @@ theorem interp_instL {κ : ℕ → Cardinal.{u}} {env : VEnv} {assignment : Assi
     intro x _
     exact ihbody hΓA hbodywf
 
+/-- Closed level-polymorphic syntax may be instantiated and then interpreted in any modeled
+context without changing its closed interpretation. -/
+theorem interp_closed_instL {κ : ℕ → Cardinal.{u}} {env : VEnv}
+    {assignment : Assignment.{u}} {L : List Nat} {Γ : List VExpr}
+    {γ : List ZFSet.{u}} {ls : List VLevel} {e : VExpr}
+    (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length))
+    (hlen : γ.length = Γ.length)
+    (hls : ∀ l ∈ ls, l.WF L.length) (he : e.WF env ls.length [])
+    (hclosed : e.ClosedN) :
+    interp κ env assignment L Γ γ (e.instL ls) =
+      interp κ env assignment (ls.map (VLevel.eval L)) [] [] e := by
+  have W : Ctx.LiftN Γ.length 0 [] Γ := by
+    simpa using Ctx.LiftN.zero (Γ := []) Γ
+  have hctx : OnCtx Γ (env.IsType L.length) ↔ OnCtx [] (env.IsType L.length) :=
+    ⟨fun _ => trivial, fun _ => hΓ⟩
+  have hv : ValLiftN Γ.length 0 [] γ := by
+    simpa [hlen] using ValLiftN.zero γ ([] : List ZFSet.{u}) hlen
+  have hw := interp_liftN (κ := κ) (assignment := assignment) henv W hctx hv (e.instL ls)
+  rw [(hclosed.instL).liftN_eq (Nat.zero_le _)] at hw
+  exact hw.trans (interp_instL (Γ := []) (γ := []) henv hls trivial e he)
+
 end Lean4LeanModel

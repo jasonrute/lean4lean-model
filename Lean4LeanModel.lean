@@ -8,4 +8,5 @@ import Lean4LeanModel.ModelSetup
 import Lean4LeanModel.CoreRules
 import Lean4LeanModel.Transport
 import Lean4LeanModel.ContextConversion
+import Lean4LeanModel.Fundamental
 import Lean4LeanModel.Consistency
