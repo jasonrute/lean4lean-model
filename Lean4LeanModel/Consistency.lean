@@ -1,5 +1,5 @@
-import Lean4Lean.Theory.Typing.Env
-import Mathlib.SetTheory.Cardinal.Regular
+import Lean4LeanModel.Universe
+import Lean4Lean.Theory.Typing.Lemmas
 
 /-!
 # The target theorem
@@ -16,7 +16,7 @@ Nothing here is proved yet; the model construction is what fills `sorry` in.
 
 namespace Lean4LeanModel
 
-open Lean4Lean Cardinal
+open Lean4Lean
 
 universe u
 
@@ -29,20 +29,11 @@ inductive at all, and any proof of `False` in an environment that does yields a 
 def VExpr.false : VExpr := .forallE (.sort .zero) (.bvar 0)
 
 /--
-There are `ω` inaccessible cardinals: a strictly increasing `ℕ`-indexed sequence of them, one to
-interpret each Lean universe `Sort 0, Sort 1, ...`.
-
-Lean itself cannot prove this: its foundations give only `v`-many inaccessibles in universe `v`
-(`Cardinal.IsInaccessible.univ`), i.e. a numeral's worth for any fixed universe, never `ω` of
-them in a single `Cardinal.{u}`. That gap is exactly the consistency strength the theorem below
-assumes, and is why this is a hypothesis rather than a lemma.
--/
-def OmegaInaccessibles : Prop :=
-  ∃ κ : ℕ → Cardinal.{u}, StrictMono κ ∧ ∀ n, (κ n).IsInaccessible
-
-/--
 **Consistency of Lean.** Assuming `ω` inaccessible cardinals, no well-formed environment proves
 `∀ (p : Prop), p` -- in any number `U` of universe parameters, in the empty local context.
+
+The declaration-model construction intentionally retains an explicit proof hole for arbitrary
+axioms while the final true statement admitting Lean's standard axioms is being specified.
 -/
 theorem consistency (_ : OmegaInaccessibles.{u}) {env : VEnv} (_ : env.WF) (U : Nat) :
     ¬ ∃ e, env.HasType U [] e VExpr.false := by

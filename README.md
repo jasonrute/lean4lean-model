@@ -23,3 +23,10 @@ That is the case on lean4lean master as of `7842f38`; consumers just need an `op
 `Lean4LeanModel/Consistency.lean` states the goal: consistency of the type theory formalized in
 `Lean4Lean.Theory`, assuming `ω` inaccessible cardinals -- the soundness theorem of *The Type
 Theory of Lean*. It is `sorry`ed pending the model construction.
+
+The first model layer is split into two modules:
+
+- `Lean4LeanModel.Grothendieck` proves the rank, cardinality, replacement, bounded-union, product,
+  and function-graph closure properties of `V_ κ.ord` for inaccessible `κ`.
+- `Lean4LeanModel.Universe` defines the proof-irrelevant proposition universe and the cumulative
+  hierarchy interpreting Lean's universe levels.

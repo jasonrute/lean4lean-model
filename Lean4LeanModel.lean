@@ -1,1 +1,3 @@
+import Lean4LeanModel.Grothendieck
+import Lean4LeanModel.Universe
 import Lean4LeanModel.Consistency
