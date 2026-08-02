@@ -24,7 +24,7 @@ That is the case on lean4lean master as of `7842f38`; consumers just need an `op
 `Lean4Lean.Theory`, assuming `ω` inaccessible cardinals -- the soundness theorem of *The Type
 Theory of Lean*. It is `sorry`ed pending the model construction.
 
-The first model layers are split into five modules:
+The first model layers are split into seven modules:
 
 - `Lean4LeanModel.Grothendieck` proves the rank, cardinality, replacement, bounded-union, product,
   and function-graph closure properties of `V_ κ.ord` for inaccessible `κ`.
@@ -36,3 +36,6 @@ The first model layers are split into five modules:
   results; CI rejects direct uses of that trust boundary elsewhere in the model.
 - `Lean4LeanModel.Semantics` defines canonical Prop/Type and proof/data classification and the total
   structural interpretation of raw expressions.
+- `Lean4LeanModel.Context` relates dependent syntactic contexts to their semantic valuations.
+- `Lean4LeanModel.ModelSetup` packages the inaccessible hierarchy, well-formed environment, and
+  semantic obligations for constant assignments and primitive definitional equations.

@@ -20,7 +20,7 @@ fi
 
 # Keep reliance on upstream unique typing and its sorried inversion dependency auditable.
 mapfile -t boundary_leaks < <(
-  grep -RInE --include='*.lean' '\.uniq([[:space:](]|$)|IsDefEqU\.sort_inv|IsDefEqU\.weakN_iff|addInduct_WF' \
+  grep -RInE --include='*.lean' '\.uniq(U)?([[:space:](]|$)|IsDefEqU\.sort_inv|\.(weakN|skips)(_iff)?|OnCtx\.weakN_inv|addInduct_WF|forallE_inv_stratified|sort_forallE_inv' \
     Lean4LeanModel --exclude='Upstream.lean' || true
 )
 
