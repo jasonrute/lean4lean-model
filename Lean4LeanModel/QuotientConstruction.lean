@@ -1,5 +1,5 @@
 import Lean4LeanModel.ModelConstruction
-import Lean4LeanModel.QuotientModel
+import Lean4LeanModel.QuotientIndModel
 
 /-!
 # Installing quotient semantics
@@ -101,10 +101,9 @@ theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
     {assignment : Assignment.{u}} (henv : env.WF)
     (hi : ∀ n, (κ n).IsInaccessible)
     (hQuotDecl : env.constants ``Quot = some quotConst)
+    (hMkDecl : env.constants ``Quot.mk = some quotMkConst)
     (hLift : ∀ n m, canonicalQuotLiftMeaning κ [n, m] ∈
       interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] [] quotLiftConst.type)
-    (hInd : ∀ n, canonicalQuotIndMeaning κ [n] ∈
-      interp κ env (assignment.withCanonicalQuotients κ) [n] [] [] quotIndConst.type)
     (hBeta : ∀ n m, interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
       quotDefEq.lhs = interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
         quotDefEq.rhs) :
@@ -132,7 +131,8 @@ theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
         · simp at hns
   · intro ns hns
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.1 hns
-    exact hInd n
+    simpa [canonicalQuotIndMeaning] using quotIndConstValue_valid henv hQuotDecl
+      hMkDecl (Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment).1 n
   · intro ns hns
     change ns.length = 2 at hns
     rcases ns with _ | ⟨n, ns⟩
@@ -253,8 +253,6 @@ theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (hadd : env.addQuot = some env') (henv' : env'.WF)
     (hLift : ∀ n m, canonicalQuotLiftMeaning κ [n, m] ∈
       interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] [] quotLiftConst.type)
-    (hInd : ∀ n, canonicalQuotIndMeaning κ [n] ∈
-      interp κ env' (assignment.withCanonicalQuotients κ) [n] [] [] quotIndConst.type)
     (hBeta : ∀ n m, interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
       quotDefEq.lhs = interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
         quotDefEq.rhs) :
@@ -265,6 +263,6 @@ theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
     (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ)
   exact canonicalQuotientMeanings henv' M.cardinals_inaccessible
-    (VEnv.addQuot_quot hadd) hLift hInd hBeta
+    (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd) hLift hBeta
 
 end Lean4LeanModel
