@@ -140,6 +140,58 @@ theorem typeClass_forallE {env : VEnv} {Γ : List VExpr} {L : List Nat}
   unfold Nat.imax
   split <;> simp_all
 
+/-! These safe-classification consequences are shared by the generated declaration bridges. -/
+
+theorem safeTypeClass_forallE_eq {env : VEnv} {L : List Nat} {Γ : List VExpr}
+    {A B : VExpr} (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length))
+    (hA : env.IsType L.length Γ A) (hB : env.IsType L.length (A :: Γ) B) :
+    safeTypeClass env Γ L (.forallE A B) = safeTypeClass env (A :: Γ) L B := by
+  obtain ⟨u, hA⟩ := hA
+  obtain ⟨v, hB⟩ := hB
+  have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, ⟨u, hA⟩⟩
+  rw [safeTypeClass_eq hΓ, safeTypeClass_eq hΓA]
+  exact typeClass_forallE henv hΓ hA hB
+
+theorem safeTypeClass_eq_zero_of_hasType {env : VEnv} {L : List Nat}
+    {Γ : List VExpr} {A : VExpr} (henv : env.WF)
+    (hΓ : OnCtx Γ (env.IsType L.length))
+    (hA : env.HasType L.length Γ A (.sort .zero)) : safeTypeClass env Γ L A = 0 := by
+  rw [safeTypeClass_eq hΓ]
+  exact (typeClass_eq_zero_iff_of_hasType henv hΓ hA).2 rfl
+
+theorem safeTermClass_ne_zero_of_hasType {env : VEnv} {Γ : List VExpr}
+    {L : List Nat} {e A : VExpr} {l : VLevel} (henv : env.WF)
+    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
+    (hA : env.HasType L.length Γ A (.sort l)) (hl : l.eval L ≠ 0) :
+    safeTermClass env Γ L e ≠ 0 := by
+  rw [safeTermClass_eq hΓ, Ne, termClass_eq_zero_iff_of_hasType henv hΓ he hA]
+  exact hl
+
+theorem safeTermClass_eq_zero_iff_of_hasType {env : VEnv} {Γ : List VExpr}
+    {L : List Nat} {e A : VExpr} {l : VLevel} (henv : env.WF)
+    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
+    (hA : env.HasType L.length Γ A (.sort l)) :
+    safeTermClass env Γ L e = 0 ↔ l.eval L = 0 := by
+  rw [safeTermClass_eq hΓ, termClass_eq_zero_iff_of_hasType henv hΓ he hA]
+
+theorem safeTypeClass_sort_ne_zero {env : VEnv} {L : List Nat} {Γ : List VExpr}
+    (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length)) (l : VLevel)
+    (hl : l.WF L.length) : safeTypeClass env Γ L (.sort l) ≠ 0 := by
+  rw [Ne, safeTypeClass_eq hΓ, typeClass_eq_zero_iff_of_hasType henv hΓ (.sort hl)]
+  simp [VLevel.eval]
+
+theorem safeTermClass_eq_zero_iff_of_typeClass {env : VEnv} {L : List Nat}
+    {Γ : List VExpr} {e A : VExpr} (henv : env.WF)
+    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
+    (hA : env.IsType L.length Γ A) {k : Nat}
+    (hc : safeTypeClass env Γ L A = 0 ↔ k = 0) :
+    safeTermClass env Γ L e = 0 ↔ k = 0 := by
+  obtain ⟨u, hA⟩ := hA
+  rw [safeTermClass_eq hΓ,
+    termClass_eq_typeClass_of_hasType henv hΓ he hA,
+    ← safeTypeClass_eq hΓ]
+  exact hc
+
 /-- An abstraction has the same proof/data class as its body. -/
 theorem termClass_lam {env : VEnv} {Γ : List VExpr} {L : List Nat}
     {A B body : VExpr} {u v : VLevel} (henv : env.WF)

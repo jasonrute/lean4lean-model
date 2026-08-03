@@ -4,42 +4,6 @@ namespace Lean4LeanModel
 open Lean4Lean
 universe u
 
-private theorem stc_forall {env : VEnv} {L : List Nat} {Γ : List VExpr}
-    {A B : VExpr} (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length))
-    (hA : env.IsType L.length Γ A) (hB : env.IsType L.length (A :: Γ) B) :
-    safeTypeClass env Γ L (.forallE A B) = safeTypeClass env (A :: Γ) L B := by
-  obtain ⟨u, hA⟩ := hA
-  obtain ⟨v, hB⟩ := hB
-  rw [safeTypeClass_eq hΓ, safeTypeClass_eq (show OnCtx (A :: Γ) _ from ⟨hΓ, u, hA⟩)]
-  exact typeClass_forallE henv hΓ hA hB
-
-private theorem stc_zero {env : VEnv} {L : List Nat} {Γ : List VExpr} {A : VExpr}
-    (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length))
-    (hA : env.HasType L.length Γ A (.sort .zero)) : safeTypeClass env Γ L A = 0 := by
-  rw [safeTypeClass_eq hΓ]
-  exact (typeClass_eq_zero_iff_of_hasType henv hΓ hA).2 rfl
-
-private theorem stm_ne {env : VEnv} {Γ : List VExpr} {L : List Nat}
-    {e A : VExpr} {l : VLevel} (henv : env.WF)
-    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
-    (hA : env.HasType L.length Γ A (.sort l)) (hl : l.eval L ≠ 0) :
-    safeTermClass env Γ L e ≠ 0 := by
-  rw [safeTermClass_eq hΓ, Ne, termClass_eq_zero_iff_of_hasType henv hΓ he hA]
-  exact hl
-
-private theorem stm_zero_iff {env : VEnv} {Γ : List VExpr} {L : List Nat}
-    {e A : VExpr} {l : VLevel} (henv : env.WF)
-    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
-    (hA : env.HasType L.length Γ A (.sort l)) :
-    safeTermClass env Γ L e = 0 ↔ l.eval L = 0 := by
-  rw [safeTermClass_eq hΓ, termClass_eq_zero_iff_of_hasType henv hΓ he hA]
-
-private theorem stc_sort_ne {env : VEnv} {L : List Nat} {Γ : List VExpr}
-    (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length)) (l : VLevel)
-    (hl : l.WF L.length) : safeTypeClass env Γ L (.sort l) ≠ 0 := by
-  rw [Ne, safeTypeClass_eq hΓ, typeClass_eq_zero_iff_of_hasType henv hΓ (.sort hl)]
-  simp [VLevel.eval]
-
 /-- The proof-irrelevant induction value inhabits lean4lean's exact generated `Quot.ind` type. -/
 theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     {assignment : Assignment.{u}}
@@ -83,33 +47,33 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     simp only [Γq, q', premise, mk, pred, q, rel, α]
     type_tac
   have hcPq : safeTypeClass env Γq [n] ((VExpr.bvar 2).app (.bvar 0)) = 0 :=
-    stc_zero henv hΓq hpq
+    safeTypeClass_eq_zero_of_hasType henv hΓq hpq
   have hresult : env.IsType 1 Γc result :=
     ⟨?_, by simp only [Γc, result, premise, mk, pred, q, rel, α]; type_tac⟩
   have hcResult : safeTypeClass env Γc [n] result = 0 := by
-    rw [stc_forall (L := [n]) (Γ := Γc) henv hΓc hq' ⟨.zero, hpq⟩]
+    rw [safeTypeClass_forallE_eq (L := [n]) (Γ := Γc) henv hΓc hq' ⟨.zero, hpq⟩]
     exact hcPq
   have hbodyP : env.IsType 1 Γp bodyP :=
     ⟨?_, by simp only [Γp, bodyP, result, premise, mk, pred, q, rel, α]; type_tac⟩
   have hcBodyP : safeTypeClass env Γp [n] bodyP = 0 := by
-    rw [stc_forall (L := [n]) (Γ := Γp) henv hΓp hpremise hresult]
+    rw [safeTypeClass_forallE_eq (L := [n]) (Γ := Γp) henv hΓp hpremise hresult]
     exact hcResult
   have hbodyR : env.IsType 1 Γr bodyR :=
     ⟨?_, by simp only [Γr, bodyR, bodyP, result, premise, mk, pred, q, rel, α]; type_tac⟩
   have hcBodyR : safeTypeClass env Γr [n] bodyR = 0 := by
-    rw [stc_forall (L := [n]) (Γ := Γr) henv hΓr hpred hbodyP]
+    rw [safeTypeClass_forallE_eq (L := [n]) (Γ := Γr) henv hΓr hpred hbodyP]
     exact hcBodyP
   have hbodyA : env.IsType 1 Γα bodyA :=
     ⟨?_, by simp only [Γα, bodyA, bodyR, bodyP, result, premise, mk, pred, q, rel, α]; type_tac⟩
   have hcBodyA : safeTypeClass env Γα [n] bodyA = 0 := by
-    rw [stc_forall (L := [n]) (Γ := Γα) henv hΓα hrel hbodyR]
+    rw [safeTypeClass_forallE_eq (L := [n]) (Γ := Γα) henv hΓα hrel hbodyR]
     exact hcBodyR
   let qc : VExpr := .const ``Quot [.param 0]
   let lrel : VLevel := .imax (.param 0) (.imax (.param 0) (.succ .zero))
   let lqA : VLevel := .imax lrel (.succ (.param 0))
   let lqc : VLevel := .imax (.succ (.param 0)) lqA
   have hcQcR : safeTermClass env Γr [n] qc ≠ 0 := by
-    apply stm_ne (l := lqc) henv hΓr
+    apply safeTermClass_ne_zero_of_hasType (l := lqc) henv hΓr
     · exact VEnv.HasType.const (U := 1) hQuotDecl (by decide) (by decide)
     · simpa [qc, quotConst] using (show env.HasType 1 Γr
         (.forallE (.sort (.param 0))
@@ -142,7 +106,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
         · exact .sort trivial
     · exact .sort (by decide)
   have hcQAR : safeTermClass env Γr [n] qA ≠ 0 :=
-    stm_ne henv hΓr hqA hqATy (by simp [lqA, lrel, VLevel.eval, Nat.imax])
+    safeTermClass_ne_zero_of_hasType henv hΓr hqA hqATy (by simp [lqA, lrel, VLevel.eval, Nat.imax])
   have hqInterp (A r : ZFSet.{u}) (hA : A ∈ ModelUniverse κ n)
       (hr : r ∈ relationSpace A) :
       interp κ env assignment [n] [rel, α] [r, A] q =
@@ -160,10 +124,10 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     ⟨hΓrelA, ⟨.param 0, by simp only [α]; type_tac⟩⟩
   have hcRelInner :
       safeTypeClass env [.bvar 1, .bvar 0, α] [n] (.sort .zero) ≠ 0 :=
-    stc_sort_ne henv hΓrelAB .zero trivial
+    safeTypeClass_sort_ne_zero henv hΓrelAB .zero trivial
   have hcRelOuter : safeTypeClass env [.bvar 0, α] [n]
       (.forallE (.bvar 1) (.sort .zero)) ≠ 0 := by
-    rw [stc_forall (L := [n]) (Γ := [.bvar 0, α]) henv hΓrelA
+    rw [safeTypeClass_forallE_eq (L := [n]) (Γ := [.bvar 0, α]) henv hΓrelA
       (show env.IsType 1 [.bvar 0, α] (.bvar 1) from ⟨.param 0, by type_tac⟩)
       (show env.IsType 1 [.bvar 1, .bvar 0, α] (.sort .zero) from
         ⟨.succ .zero, .sort trivial⟩)]
@@ -178,7 +142,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
   have hΓpredQ : OnCtx [q, rel, α] (env.IsType 1) :=
     ⟨hΓr, ⟨.param 0, by simp only [q, rel, α]; type_tac⟩⟩
   have hcPredBody : safeTypeClass env [q, rel, α] [n] (.sort .zero) ≠ 0 :=
-    stc_sort_ne henv hΓpredQ .zero trivial
+    safeTypeClass_sort_ne_zero henv hΓpredQ .zero trivial
   have hpredInterp (A r : ZFSet.{u}) (hA : A ∈ ModelUniverse κ n)
       (hr : r ∈ relationSpace A) :
       interp κ env assignment [n] [rel, α] [r, A] pred =
@@ -187,7 +151,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     simp only [piValue, if_neg hcPredBody, ModelUniverse_zero, quotPredicateSpace]
     rw [hqInterp A r hA hr]
   have hcQcC : safeTermClass env Γc [n] qc ≠ 0 := by
-    apply stm_ne (l := lqc) henv hΓc
+    apply safeTermClass_ne_zero_of_hasType (l := lqc) henv hΓc
     · exact VEnv.HasType.const (U := 1) hQuotDecl (by decide) (by decide)
     · simpa [qc, quotConst] using (show env.HasType 1 Γc
         (.forallE (.sort (.param 0))
@@ -220,7 +184,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
         · exact .sort trivial
     · exact .sort (by decide)
   have hcQAC : safeTermClass env Γc [n] qC ≠ 0 :=
-    stm_ne henv hΓc hqC hqCTy (by simp [lqA, lrel, VLevel.eval, Nat.imax])
+    safeTermClass_ne_zero_of_hasType henv hΓc hqC hqCTy (by simp [lqA, lrel, VLevel.eval, Nat.imax])
   have hqInterpC (A r P c : ZFSet.{u}) (hA : A ∈ ModelUniverse κ n)
       (hr : r ∈ relationSpace A) :
       interp κ env assignment [n] [premise, pred, rel, α] [c, P, r, A] q' =
@@ -244,7 +208,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
       simp only [Γq, q', premise, mk, pred, q, rel, α]
       type_tac) (.sort trivial)
   have hcPredVar : safeTermClass env Γq [n] (.bvar 2) ≠ 0 :=
-    stm_ne henv hΓq hPredVar hPredCTy (by simp [lpred, VLevel.eval, Nat.imax])
+    safeTermClass_ne_zero_of_hasType henv hΓq hPredVar hPredCTy (by simp [lpred, VLevel.eval, Nat.imax])
   have hpqInterp (A r P c qv : ZFSet.{u}) :
       interp κ env assignment [n] [q', premise, pred, rel, α]
         [qv, c, P, r, A] ((VExpr.bvar 2).app (.bvar 0)) = depApp P qv := by
@@ -261,7 +225,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     simp only [Γa, mk, pred, q, rel, α]
     type_tac
   have hcPMk : safeTypeClass env Γa [n] ((VExpr.bvar 1).app mk) = 0 :=
-    stc_zero henv hΓa hpMk
+    safeTypeClass_eq_zero_of_hasType henv hΓa hpMk
   let predA : VExpr := .forallE
     (((VExpr.const ``Quot [.param 0]).app (.bvar 3)).app (.bvar 2)) (.sort .zero)
   have hPredVarA : env.HasType 1 Γa (.bvar 1) predA := by
@@ -273,7 +237,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
       simp only [Γa, pred, q, rel, α]
       type_tac) (.sort trivial)
   have hcPredVarA : safeTermClass env Γa [n] (.bvar 1) ≠ 0 :=
-    stm_ne henv hΓa hPredVarA hPredATy (by simp [lpred, VLevel.eval, Nat.imax])
+    safeTermClass_ne_zero_of_hasType henv hΓa hPredVarA hPredATy (by simp [lpred, VLevel.eval, Nat.imax])
   let mkc : VExpr := .const ``Quot.mk [.param 0]
   let lmkR : VLevel := .imax (.param 0) (.param 0)
   let lmkA : VLevel := .imax lrel lmkR
@@ -299,7 +263,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
                 · type_tac
                 · rfl)
   have hcMkc : safeTermClass env Γa [n] mkc = 0 ↔ n = 0 := by
-    rw [stm_zero_iff (L := [n]) henv hΓa hmkc hmkcTy]
+    rw [safeTermClass_eq_zero_iff_of_hasType (L := [n]) henv hΓa hmkc hmkcTy]
     simp [lmkc, lmkA, lmkR, lrel, VLevel.eval, Nat.imax]
   let mkA : VExpr := mkc.app (.bvar 3)
   let mkAType : VExpr := .forallE
@@ -324,7 +288,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
         · type_tac
         · rfl
   have hcMkA : safeTermClass env Γa [n] mkA = 0 ↔ n = 0 := by
-    rw [stm_zero_iff (L := [n]) henv hΓa hmkA hmkATy]
+    rw [safeTermClass_eq_zero_iff_of_hasType (L := [n]) henv hΓa hmkA hmkATy]
     simp [lmkA, lmkR, lrel, VLevel.eval, Nat.imax]
   let mkR : VExpr := mkA.app (.bvar 2)
   let mkRType : VExpr := .forallE (.bvar 3)
@@ -341,7 +305,7 @@ theorem quotIndConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
       · type_tac
       · rfl
   have hcMkR : safeTermClass env Γa [n] mkR = 0 ↔ n = 0 := by
-    rw [stm_zero_iff (L := [n]) henv hΓa hmkR hmkRTy]
+    rw [safeTermClass_eq_zero_iff_of_hasType (L := [n]) henv hΓa hmkR hmkRTy]
     simp [lmkR, VLevel.eval, Nat.imax]
   have hmkInterp (A r P a : ZFSet.{u}) (hA : A ∈ ModelUniverse κ n)
       (hr : r ∈ relationSpace A) (ha : a ∈ A) :

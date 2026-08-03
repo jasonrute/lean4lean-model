@@ -112,12 +112,14 @@ theorem interp_extension {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     intro x _
     exact ihbody hΓA hbodywf
 
-private theorem addConst_fresh {env env' : VEnv} {name : Name} {ci : VConstant}
+/-- A successful constant insertion starts from a fresh name. -/
+theorem addConst_fresh {env env' : VEnv} {name : Name} {ci : VConstant}
     (hadd : env.addConst name ci = some env') : env.constants name = none := by
   unfold VEnv.addConst at hadd
   split at hadd <;> simp_all
 
-private theorem addConst_lookup_cases {env env' : VEnv} {name c : Name}
+/-- Every constant after an insertion is either the new constant or an old one. -/
+theorem addConst_lookup_cases {env env' : VEnv} {name c : Name}
     {ci cj : VConstant} (hadd : env.addConst name ci = some env')
     (hc : env'.constants c = some cj) :
     (c = name ∧ cj = ci) ∨ env.constants c = some cj := by
@@ -132,7 +134,8 @@ private theorem addConst_lookup_cases {env env' : VEnv} {name c : Name}
     · right
       exact hc
 
-private theorem addConst_defeq_old {env env' : VEnv} {name : Name} {ci : VConstant}
+/-- Inserting a constant does not introduce definitional equations. -/
+theorem addConst_defeq_old {env env' : VEnv} {name : Name} {ci : VConstant}
     {df : VDefEq} (hadd : env.addConst name ci = some env')
     (hdf : env'.defeqs df) : env.defeqs df := by
   unfold VEnv.addConst at hadd

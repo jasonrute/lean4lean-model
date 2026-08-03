@@ -16,34 +16,6 @@ open Lean4Lean
 
 universe u
 
-private theorem addConst_fresh' {env env' : VEnv} {name : Name} {ci : VConstant}
-    (hadd : env.addConst name ci = some env') : env.constants name = none := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> simp_all
-
-private theorem addConst_lookup_cases' {env env' : VEnv} {name c : Name}
-    {ci cj : VConstant} (hadd : env.addConst name ci = some env')
-    (hc : env'.constants c = some cj) :
-    (c = name ∧ cj = ci) ∨ env.constants c = some cj := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> try contradiction
-  next hnone =>
-    cases hadd
-    simp only at hc
-    split at hc
-    · left
-      simp_all
-    · right
-      exact hc
-
-private theorem addConst_defeq_old' {env env' : VEnv} {name : Name} {ci : VConstant}
-    {df : VDefEq} (hadd : env.addConst name ci = some env')
-    (hdf : env'.defeqs df) : env.defeqs df := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> try contradiction
-  cases hadd
-  exact hdf
-
 private theorem addQuot_le' {env env' : VEnv}
     (hadd : env.addQuot = some env') : env ≤ env' := by
   unfold VEnv.addQuot at hadd
@@ -186,10 +158,10 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
   have hle : env ≤ env₄.addDefEq quotDefEq := by
     exact VEnv.LE.trans hle₁ (VEnv.LE.trans hle₂
       (VEnv.LE.trans hle₃ (VEnv.LE.trans hle₄ VEnv.addDefEq_le)))
-  have hfresh₁ := addConst_fresh' h₁
-  have hfresh₂ := addConst_fresh' h₂
-  have hfresh₃ := addConst_fresh' h₃
-  have hfresh₄ := addConst_fresh' h₄
+  have hfresh₁ := addConst_fresh h₁
+  have hfresh₂ := addConst_fresh h₂
+  have hfresh₃ := addConst_fresh h₃
+  have hfresh₄ := addConst_fresh h₄
   have hext : Assignment.Extends env assignment assignment₄ := by
     intro c ci hc ns
     have hc₁ : c ≠ ``Quot := by
@@ -222,16 +194,16 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
   constructor
   · intro c ci ns hc hns
     change env₄.constants c = some ci at hc
-    rcases addConst_lookup_cases' h₄ hc with hnew | hc
+    rcases addConst_lookup_cases h₄ hc with hnew | hc
     · rcases hnew with ⟨rfl, rfl⟩
       simpa [assignment₄] using meanings.quotInd_valid ns hns
-    rcases addConst_lookup_cases' h₃ hc with hnew | hc
+    rcases addConst_lookup_cases h₃ hc with hnew | hc
     · rcases hnew with ⟨rfl, rfl⟩
       simpa [assignment₄, assignment₃] using meanings.quotLift_valid ns hns
-    rcases addConst_lookup_cases' h₂ hc with hnew | hc
+    rcases addConst_lookup_cases h₂ hc with hnew | hc
     · rcases hnew with ⟨rfl, rfl⟩
       simpa [assignment₄, assignment₃, assignment₂] using meanings.quotMk_valid ns hns
-    rcases addConst_lookup_cases' h₁ hc with hnew | hc
+    rcases addConst_lookup_cases h₁ hc with hnew | hc
     · rcases hnew with ⟨rfl, rfl⟩
       simpa [assignment₄, assignment₃, assignment₂, assignment₁] using
         meanings.quot_valid ns hns
@@ -247,8 +219,8 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     rcases hdf with rfl | hdf
     · exact meanings.quotDefEq_valid ns hns
     · have hdfOld : env.defeqs df := by
-        exact addConst_defeq_old' h₁
-          (addConst_defeq_old' h₂ (addConst_defeq_old' h₃ (addConst_defeq_old' h₄ hdf)))
+        exact addConst_defeq_old h₁
+          (addConst_defeq_old h₂ (addConst_defeq_old h₃ (addConst_defeq_old h₄ hdf)))
       have hOld := M.assignmentWF.defeq hdfOld hns
       obtain ⟨hl, hr⟩ := M.envOrdered.defEqWF hdfOld
       have hlExt := interp_extension (κ := κ) hle M.envWF henv' hext
@@ -259,19 +231,21 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
           simpa [hns] using show df.rhs.WF env df.uvars [] from ⟨df.type, hr⟩)
       exact hlExt.trans (hOld.trans hrExt.symm)
 
-/-- Complete the `addQuot` model step using the canonical quotient assignment. The only semantic
-premise beyond the existing model is the canonical meaning of `Eq`. -/
+/-- Complete the `addQuot` model step using the canonical quotient assignment, preserving the
+canonical meanings of both `Eq` and the four quotient primitives. The only semantic premise beyond
+the existing model is the canonical meaning of `Eq`. -/
 theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}} (M : ModelSetup κ env assignment)
     (hready : env.QuotReady) (hadd : env.addQuot = some env') (henv' : env'.WF)
     (hEq : assignment.ModelsEq κ) :
     ModelSetup κ env' (assignment.withCanonicalQuotients κ) ∧
+      (assignment.withCanonicalQuotients κ).ModelsEq κ ∧
       (assignment.withCanonicalQuotients κ).ModelsQuotPrimitives κ := by
-  refine ⟨?_, Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment⟩
   have hEqDecl : env'.constants ``Eq = some eqConst := (addQuot_le' hadd).constants hready
   have hEq' : (assignment.withCanonicalQuotients κ).ModelsEq κ := hEq.congr (by
     intro ns
     simp [Assignment.withCanonicalQuotients, Assignment.set])
+  refine ⟨?_, hEq', Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment⟩
   apply model_addQuot_sem M hadd henv'
     (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
     (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ)

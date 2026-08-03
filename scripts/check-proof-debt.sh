@@ -40,6 +40,7 @@ fi
 # Pin the complete transitive trust base of the headline theorem. In particular, this records that
 # local and upstream proof debt is still visible as `sorryAx` instead of being hidden by a new axiom.
 expected_axioms="'Lean4LeanModel.consistency' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
 'Lean4LeanModel.quotMkConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
 'Lean4LeanModel.quotRespectsType_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Lean4LeanModel.quotLiftConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]

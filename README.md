@@ -39,6 +39,8 @@ The model is split into the following modules:
 - `Lean4LeanModel.QuotientModel`, `QuotientLiftModel`, `QuotientIndModel`, and
   `QuotientDefEqModel` connect that construction to lean4lean's exact four quotient declarations
   and generated computation rule.
+- `Lean4LeanModel.QuotientConstruction` installs those meanings in one `VEnv.addQuot` step while
+  preserving the incoming model and its canonical equality invariant.
 - `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's currently sorried
   unique-typing and sort-inversion dependencies; CI rejects direct uses of that trust boundary
   elsewhere in the model.
@@ -50,6 +52,8 @@ The model is split into the following modules:
 - `Lean4LeanModel.StandardAxioms` identifies the exact declarations of `propext`,
   `Classical.choice`, and `Quot.sound`, and provides a predicate-agnostic way to state that a
   declaration history contains no other axioms.
+- `Lean4LeanModel.StandardAxiomModel` and `StandardAxiomConstruction` give their canonical semantic
+  values and package them behind exact generated-type bridges.
 - `Lean4LeanModel.CoreRules` proves the compositional semantic universe, product, abstraction, and
   application rules used by the fundamental theorem.
 - `Lean4LeanModel.Transport` proves semantic weakening, substitution, and universe-level
@@ -82,3 +86,5 @@ therefore complete once the incoming assignment is known to model `Eq`. The curr
 `model_quotient_boundary` signature cannot provide that invariant: `QuotReady` records only that
 `Eq` is declared. Thus `addQuot` remains transitively
 blocked on the pending canonical inductive interpretation of `Eq`, rather than on quotient theory.
+The quotient bridges contain no local proof holes; except for the respect-domain equality, their
+audited trust bases still include lean4lean's sorried unique-typing and sort-inversion metatheory.

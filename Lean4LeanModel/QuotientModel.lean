@@ -107,7 +107,7 @@ noncomputable def quotLiftRespectValue (assignment : Assignment.{u}) (m : Nat)
 
 /-- Under the canonical interpretation of equality, the exact semantic type of the
 `Quot.lift` respect proof is the truth value of the metatheoretic respect condition. -/
-theorem quotLiftRespectValue_eq {κ : ℕ → Cardinal.{u}}
+theorem quotRespectsType_eq {κ : ℕ → Cardinal.{u}}
     {assignment : Assignment.{u}} (hEq : assignment.ModelsEq κ)
     {m : Nat} {A r B f : ZFSet.{u}} (hr : r ∈ relationSpace A)
     (hB : B ∈ ModelUniverse κ m) (hf : f ∈ piValue m A (fun _ => B)) :
@@ -134,15 +134,6 @@ theorem quotLiftRespectValue_eq {κ : ℕ → Cardinal.{u}}
     rw [hEq m B hB (appValue m f a) hfa (appValue m f b) hfb,
       bullet_mem_truthValue]
     exact h a ha b hb hp
-
-/-- Review-facing name for the exact respect-domain equality used when wiring `Quot.lift`. -/
-theorem quotRespectsType_eq {κ : ℕ → Cardinal.{u}}
-    {assignment : Assignment.{u}} (hEq : assignment.ModelsEq κ)
-    {m : Nat} {A r B f : ZFSet.{u}} (hr : r ∈ relationSpace A)
-    (hB : B ∈ ModelUniverse κ m) (hf : f ∈ piValue m A (fun _ => B)) :
-    quotLiftRespectValue assignment m A r B f =
-      truthValue (QuotientRespects m A (relationOfGraph r) f) :=
-  quotLiftRespectValue_eq hEq hr hB hf
 
 /-- Canonical equality turns the interpreted respect premise of `Quot.lift` into the
 metatheoretic equality condition used by `quotLiftConstValue`. -/
@@ -176,33 +167,6 @@ theorem quotSound_semantic {κ : ℕ → Cardinal.{u}} {assignment : Assignment.
     (quotMkValue n A (relationOfGraph r) b) (quotMkValue_mem hb)]
   rw [bullet_mem_truthValue]
   exact quotMkValue_sound ha hb hab
-
-private theorem safeTypeClass_forallE_eq {env : VEnv} {L : List Nat} {Γ : List VExpr}
-    {A B : VExpr} (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length))
-    (hA : env.IsType L.length Γ A) (hB : env.IsType L.length (A :: Γ) B) :
-    safeTypeClass env Γ L (.forallE A B) = safeTypeClass env (A :: Γ) L B := by
-  obtain ⟨u, hA⟩ := hA
-  obtain ⟨v, hB⟩ := hB
-  have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, ⟨u, hA⟩⟩
-  calc
-    safeTypeClass env Γ L (.forallE A B) = typeClass env Γ L (.forallE A B) :=
-      safeTypeClass_eq hΓ
-    _ = typeClass env (A :: Γ) L B := typeClass_forallE henv hΓ hA hB
-    _ = safeTypeClass env (A :: Γ) L B := (safeTypeClass_eq hΓA).symm
-
-private theorem safeTypeClass_sort_ne_zero {env : VEnv} {L : List Nat} {Γ : List VExpr}
-    (henv : env.WF) (hΓ : OnCtx Γ (env.IsType L.length)) (l : VLevel)
-    (hl : l.WF L.length) : safeTypeClass env Γ L (.sort l) ≠ 0 := by
-  rw [Ne, safeTypeClass_eq hΓ, typeClass_eq_zero_iff_of_hasType henv hΓ (.sort hl)]
-  simp [VLevel.eval]
-
-private theorem safeTermClass_ne_zero_of_hasType {env : VEnv} {Γ : List VExpr}
-    {L : List Nat} {e A : VExpr} {l : VLevel} (henv : env.WF)
-    (hΓ : OnCtx Γ (env.IsType L.length)) (he : env.HasType L.length Γ e A)
-    (hA : env.HasType L.length Γ A (.sort l)) (hl : l.eval L ≠ 0) :
-    safeTermClass env Γ L e ≠ 0 := by
-  rw [safeTermClass_eq hΓ, Ne, termClass_eq_zero_iff_of_hasType henv hΓ he hA]
-  exact hl
 
 theorem quotConstValue_valid {κ : ℕ → Cardinal.{u}} {env : VEnv}
     {assignment : Assignment.{u}} (henv : env.WF)
