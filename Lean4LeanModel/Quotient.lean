@@ -218,6 +218,139 @@ theorem quotValue_mem_ModelUniverse {κ : ℕ → Cardinal.{u}}
       change SmallAt (κ n) (setQuotient A R)
       exact smallAt_setQuotient (hi n) hA
 
+/-- Semantic value of the quotient type former at universe level `n`. -/
+noncomputable def quotTypeValue (κ : ℕ → Cardinal.{u}) (n : Nat) : ZFSet.{u} :=
+  depLam (ModelUniverse κ n) fun A =>
+    depLam (relationSpace A) fun r => quotValue n A (relationOfGraph r)
+
+/-- The quotient type former inhabits its expected nested function space. -/
+theorem quotTypeValue_mem {κ : ℕ → Cardinal.{u}}
+    (hi : ∀ n, (κ n).IsInaccessible) (n : Nat) :
+    quotTypeValue κ n ∈ depFuns (ModelUniverse κ n) (fun A =>
+      depFuns (relationSpace A) (fun _ => ModelUniverse κ n)) := by
+  apply depLam_mem_depFuns
+  intro A hA
+  apply depLam_mem_depFuns
+  intro r _
+  exact quotValue_mem_ModelUniverse hi hA
+
+/-- Semantic value of `Quot.mk` at universe level `n`. -/
+noncomputable def quotMkConstValue (κ : ℕ → Cardinal.{u}) (n : Nat) : ZFSet.{u} :=
+  lamValue n (ModelUniverse κ n) fun A =>
+    lamValue n (relationSpace A) fun r => quotMkFunction n A (relationOfGraph r)
+
+@[simp] theorem quotMkConstValue_zero (κ : ℕ → Cardinal.{u}) :
+    quotMkConstValue κ 0 = bullet := by
+  simp [quotMkConstValue, lamValue]
+
+@[simp] theorem quotMkConstValue_succ (κ : ℕ → Cardinal.{u}) (n : Nat) :
+    quotMkConstValue κ (n + 1) =
+      depLam (ModelUniverse κ (n + 1)) fun A =>
+        depLam (relationSpace A) fun r =>
+          quotMkFunction (n + 1) A (relationOfGraph r) := by
+  simp [quotMkConstValue, lamValue]
+
+private theorem piValue_mem_propUniverse_of_zero {m : Nat} (hm : m = 0)
+    (A : ZFSet.{u}) (B : ZFSet.{u} → ZFSet.{u}) :
+    piValue m A B ∈ (propUniverse : ZFSet.{u}) := by
+  subst m
+  exact forallValue_mem_propUniverse A B
+
+theorem quotMkConstValue_mem {κ : ℕ → Cardinal.{u}} (n : Nat) :
+    quotMkConstValue κ n ∈ piValue n (ModelUniverse κ n) (fun A =>
+      piValue n (relationSpace A) (fun r =>
+        piValue n A (fun _ => quotValue n A (relationOfGraph r)))) := by
+  apply lamValue_mem_piValue
+  · intro A _
+    apply lamValue_mem_piValue
+    · intro r _
+      exact quotMkFunction_mem
+    · intro hn _ _
+      exact piValue_mem_propUniverse_of_zero hn _ _
+  · intro hn _ _
+    exact piValue_mem_propUniverse_of_zero hn _ _
+
+/-- The metatheoretic proposition asserted by the respect argument of `Quot.lift`. -/
+def QuotientRespects (m : Nat) (A : ZFSet.{u})
+    (R : ZFSet.{u} → ZFSet.{u} → Prop) (f : ZFSet.{u}) : Prop :=
+  ∀ a ∈ A, ∀ b ∈ A, R a b → appValue m f a = appValue m f b
+
+/-- Semantic value of `Quot.lift` at source level `n` and target level `m`, with equality in its
+respect argument exposed as metatheoretic equality. `QuotientModel` states the canonical `Eq`
+invariant and proves the implication needed to obtain this proposition. -/
+noncomputable def quotLiftConstValue (κ : ℕ → Cardinal.{u}) (n m : Nat) : ZFSet.{u} :=
+  lamValue m (ModelUniverse κ n) fun A =>
+    lamValue m (relationSpace A) fun r =>
+      lamValue m (ModelUniverse κ m) fun B =>
+        lamValue m (piValue m A (fun _ => B)) fun f =>
+          lamValue m (truthValue (QuotientRespects m A (relationOfGraph r) f)) fun _ =>
+            quotLiftFunction n m A (relationOfGraph r) f
+
+theorem quotLiftConstValue_mem {κ : ℕ → Cardinal.{u}} (n m : Nat) :
+    quotLiftConstValue κ n m ∈ piValue m (ModelUniverse κ n) (fun A =>
+      piValue m (relationSpace A) (fun r =>
+        piValue m (ModelUniverse κ m) (fun B =>
+          piValue m (piValue m A (fun _ => B)) (fun f =>
+            piValue m (truthValue (QuotientRespects m A (relationOfGraph r) f)) (fun _ =>
+              piValue m (quotValue n A (relationOfGraph r)) (fun _ => B)))))) := by
+  apply lamValue_mem_piValue
+  · intro A hA
+    apply lamValue_mem_piValue
+    · intro r hr
+      apply lamValue_mem_piValue
+      · intro B hB
+        apply lamValue_mem_piValue
+        · intro f hf
+          apply lamValue_mem_piValue
+          · intro _ hrespect
+            apply quotLiftFunction_mem
+            · intro hn
+              simpa [hn] using hA
+            · exact hf
+            · exact (mem_truthValue.1 hrespect).1
+            · intro hm
+              simpa [hm] using hB
+          · intro hm _ _
+            exact piValue_mem_propUniverse_of_zero hm _ _
+        · intro hm _ _
+          exact piValue_mem_propUniverse_of_zero hm _ _
+      · intro hm _ _
+        exact piValue_mem_propUniverse_of_zero hm _ _
+    · intro hm _ _
+      exact piValue_mem_propUniverse_of_zero hm _ _
+  · intro hm _ _
+    exact piValue_mem_propUniverse_of_zero hm _ _
+
+/-- The semantic computation rule after all arguments of the quotient lift have been supplied. -/
+theorem app_quotLiftFunction_mk_of_mem {κ : ℕ → Cardinal.{u}} {n m : Nat}
+    {A B r f : ZFSet.{u}}
+    (hA : A ∈ ModelUniverse κ n) (hB : B ∈ ModelUniverse κ m)
+    (hf : f ∈ piValue m A (fun _ => B))
+    (hrespect : QuotientRespects m A (relationOfGraph r) f)
+    {a : ZFSet.{u}} (ha : a ∈ A) :
+    appValue m (quotLiftFunction n m A (relationOfGraph r) f)
+      (quotMkValue n A (relationOfGraph r) a) = appValue m f a := by
+  apply app_quotLiftFunction_mk
+  · intro hn
+    simpa [hn] using hA
+  · exact hf
+  · exact hrespect
+  · intro hm
+    simpa [hm] using hB
+  · exact ha
+
+/-- The semantic proposition expressing the premise of quotient induction. -/
+noncomputable def quotIndPremise (n : Nat) (A : ZFSet.{u})
+    (R : ZFSet.{u} → ZFSet.{u} → Prop) (P : ZFSet.{u} → ZFSet.{u}) : ZFSet.{u} :=
+  forallValue A fun a => P (quotMkValue n A R a)
+
+theorem bullet_mem_quotInd_of_premise {n : Nat} {A : ZFSet.{u}}
+    {R : ZFSet.{u} → ZFSet.{u} → Prop} {P : ZFSet.{u} → ZFSet.{u}}
+    (h : bullet ∈ quotIndPremise n A R P) :
+    bullet ∈ forallValue (quotValue n A R) P := by
+  apply bullet_mem_quotInd
+  exact bullet_mem_forallValue.1 h
+
 theorem quotLiftValue_smallAt {c : Cardinal.{u}} {n : Nat} {A : ZFSet.{u}}
     {R : ZFSet.{u} → ZFSet.{u} → Prop} {f : ZFSet.{u} → ZFSet.{u}}
     (hA : n = 0 → A ∈ (propUniverse : ZFSet.{u}))

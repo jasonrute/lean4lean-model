@@ -36,6 +36,9 @@ The model is split into the following modules:
 - `Lean4LeanModel.SetQuotient` and `Lean4LeanModel.Quotient` construct genuine quotients by the
   equivalence closure of an arbitrary relation, including proof-irrelevant `Prop` dispatch,
   soundness, lift computation, induction, and inaccessible-universe closure.
+- `Lean4LeanModel.QuotientModel` connects that construction to lean4lean's exact `Quot` declaration
+  and isolates the invariants needed to wire the remaining quotient primitives and computation
+  rule into the declaration model.
 - `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's currently sorried
   unique-typing and sort-inversion dependencies; CI rejects direct uses of that trust boundary
   elsewhere in the model.
@@ -68,8 +71,10 @@ of `VExpr.false`; its axiom-case `sorry` is retained only for that backwards-com
 The standard-axiom path instead accepts any policy implying that each axiom is exactly `propext`,
 `Classical.choice`, or `Quot.sound`, and routes those declarations through a dedicated construction
 hook. That hook cannot yet be implemented because its meanings depend on the still-pending
-canonical inductive and genuine quotient interpretations; in particular, mere well-formedness does
-not fix the interpretations of `Eq`, `Iff`, or `Nonempty`.
-Inductive declarations are genuinely blocked by the currently sorried upstream definitions. The
-quotient boundary deliberately avoids implementing an identity model that works for `addQuot`
-alone but would be discarded once `Quot.sound` is admitted.
+canonical inductive interpretations; in particular, mere well-formedness does not fix the
+interpretations of `Eq`, `Iff`, or `Nonempty`.
+Inductive declarations are genuinely blocked by the currently sorried upstream definitions. A
+genuine quotient construction is available and is proved compatible with `Quot.sound` at the
+semantic-operation level. Completing the `addQuot` environment step requires threading canonical
+`Eq` and quotient-assignment invariants through the model, validating the remaining exact primitive
+types, and connecting the constructed beta rule to lean4lean's `quotDefEq`.

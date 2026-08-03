@@ -7,7 +7,8 @@ import Lean4Lean.Theory.Typing.Env
 These are the only local proof holes in the construction. The axiom theorem is retained solely for
 the backwards-compatible unrestricted statement; `model_of_wfHistory_standard` bypasses it via
 explicit meanings for the standard three. The inductive theorem is blocked by upstream `sorry`
-definitions, and the quotient theorem deliberately postpones a temporary model. They are kept in a
+definitions. The quotient mathematics is complete, while its environment step still needs the
+canonical equality invariant and primitive computation-rule bridge. The holes are kept in a
 dedicated module so CI can reject accidental proof debt everywhere else.
 -/
 
@@ -37,9 +38,11 @@ theorem model_inductive_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     ∃ assignment', ModelSetup κ env' assignment' := by
   sorry
 
-/-- `addQuot` alone admits a temporary identity-quotient interpretation because it does not add
-`Quot.sound`. We deliberately postpone that model: it would be invalid as soon as `Quot.sound` is
-admitted and would be replaced by the genuine quotient construction tied to `Eq`. -/
+/-- The genuine quotient operations, their universe closure, and operation-level compatibility
+with `Quot.sound` are constructed in `Quotient` and `QuotientModel`. Completing `addQuot` must wire
+its four constants and the `Quot.lift` computation rule into `Assignment.WF`, while preserving the
+`ModelsEq` and `ModelsQuot` invariants. The `Quot.lift` case needs canonical equality;
+`VEnv.QuotReady` records only the declaration of `Eq`, not its semantic meaning. -/
 theorem model_quotient_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}}
     (M : ModelSetup κ env assignment) (hready : env.QuotReady)

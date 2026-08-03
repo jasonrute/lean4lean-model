@@ -3,6 +3,7 @@ import Lean4LeanModel.Universe
 import Lean4LeanModel.DependentFunction
 import Lean4LeanModel.SetQuotient
 import Lean4LeanModel.Quotient
+import Lean4LeanModel.QuotientModel
 import Lean4LeanModel.Upstream
 import Lean4LeanModel.Semantics
 import Lean4LeanModel.Context
