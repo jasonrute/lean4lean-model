@@ -33,6 +33,9 @@ The model is split into the following modules:
   hierarchy interpreting Lean's universe levels.
 - `Lean4LeanModel.DependentFunction` defines dependent function graphs, abstraction, application,
   logical quantification, and the corresponding beta, eta, and universe-closure theorems.
+- `Lean4LeanModel.SetQuotient` and `Lean4LeanModel.Quotient` construct genuine quotients by the
+  equivalence closure of an arbitrary relation, including proof-irrelevant `Prop` dispatch,
+  soundness, lift computation, induction, and inaccessible-universe closure.
 - `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's currently sorried
   unique-typing and sort-inversion dependencies; CI rejects direct uses of that trust boundary
   elsewhere in the model.
