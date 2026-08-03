@@ -4,6 +4,8 @@ import Lean4LeanModel.DependentFunction
 import Lean4LeanModel.SetQuotient
 import Lean4LeanModel.Quotient
 import Lean4LeanModel.QuotientModel
+import Lean4LeanModel.QuotientConstruction
+import Lean4LeanModel.StandardAxiomModel
 import Lean4LeanModel.Upstream
 import Lean4LeanModel.Semantics
 import Lean4LeanModel.Context
