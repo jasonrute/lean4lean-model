@@ -38,11 +38,17 @@ theorem model_inductive_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     ∃ assignment', ModelSetup κ env' assignment' := by
   sorry
 
-/-- The genuine quotient operations, their universe closure, and operation-level compatibility
-with `Quot.sound` are constructed in `Quotient` and `QuotientModel`. Completing `addQuot` must wire
-its four constants and the `Quot.lift` computation rule into `Assignment.WF`, while preserving the
-`ModelsEq` and `ModelsQuot` invariants. The `Quot.lift` case needs canonical equality;
-`VEnv.QuotReady` records only the declaration of `Eq`, not its semantic meaning. -/
+/-- The genuine quotient operations, their universe closure, exact `Quot` and `Quot.mk` types,
+and the exact respect domain needed by `Quot.lift` are constructed in `Quotient` and
+`QuotientModel`. Completing `addQuot` must wire all four constants and `quotDefEq` into
+`Assignment.WF` while carrying `ModelsEq` and `ModelsQuot` through the history induction.
+
+This theorem's present signature cannot express that induction invariant: `ModelSetup` together
+with `VEnv.QuotReady` says only that `Eq` is declared, not that it has the canonical semantic
+meaning recorded by `ModelsEq`. Closing the boundary therefore requires strengthening the history
+induction motive (or `ModelSetup`) before proving this environment step. Since canonical `Eq`
+comes from the pending inductive semantics, `addQuot` is transitively blocked on that construction
+even though the quotient mathematics itself is complete. -/
 theorem model_quotient_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}}
     (M : ModelSetup κ env assignment) (hready : env.QuotReady)

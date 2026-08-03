@@ -39,10 +39,12 @@ fi
 
 # Pin the complete transitive trust base of the headline theorem. In particular, this records that
 # local and upstream proof debt is still visible as `sorryAx` instead of being hidden by a new axiom.
-expected_axioms="'Lean4LeanModel.consistency' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]"
+expected_axioms="'Lean4LeanModel.consistency' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotMkConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotRespectsType_eq' depends on axioms: [propext, Classical.choice, Quot.sound]"
 actual_axioms=$(lake env lean Lean4LeanModel/TrustAudit.lean 2>&1)
 if [[ "$actual_axioms" != "$expected_axioms" ]]; then
-  echo 'The consistency theorem trust base changed:' >&2
+  echo 'The audited theorem trust base changed:' >&2
   printf '  expected: %s\n' "$expected_axioms" >&2
   printf '  actual:   %s\n' "$actual_axioms" >&2
   exit 1

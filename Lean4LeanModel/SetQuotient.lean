@@ -114,10 +114,9 @@ theorem setQuotLift_class {A : ZFSet.{u}} {R : ZFSet.{u} → ZFSet.{u} → Prop}
     {a : ZFSet.{u}} (ha : a ∈ A) :
     setQuotLift A R f (setQuotClass A R a) = f a := by
   classical
-  let hrep : ∃ b ∈ A, setQuotClass A R b = setQuotClass A R a := ⟨a, ha, rfl⟩
+  have hrep : ∃ b ∈ A, setQuotClass A R b = setQuotClass A R a := ⟨a, ha, rfl⟩
   simp only [setQuotLift, dif_pos hrep]
   have hchosen := (Classical.choose_spec hrep).2
-  have hb := (Classical.choose_spec hrep).1
   exact eq_of_setQuotEqv hf ((setQuotClass_eq_iff ha).1 hchosen)
 
 theorem setQuotLift_mem {A : ZFSet.{u}} {R : ZFSet.{u} → ZFSet.{u} → Prop}

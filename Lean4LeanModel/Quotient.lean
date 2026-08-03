@@ -142,7 +142,7 @@ theorem quotLiftValue_mk {n : Nat} {A : ZFSet.{u}}
     {a : ZFSet.{u}} (ha : a ∈ A) :
     quotLiftValue n A R f (quotMkValue n A R a) = f a := by
   classical
-  let hrep : ∃ b ∈ A, quotMkValue n A R b = quotMkValue n A R a := ⟨a, ha, rfl⟩
+  have hrep : ∃ b ∈ A, quotMkValue n A R b = quotMkValue n A R a := ⟨a, ha, rfl⟩
   simp only [quotLiftValue, dif_pos hrep]
   have hb := (Classical.choose_spec hrep).1
   have heq := (Classical.choose_spec hrep).2
