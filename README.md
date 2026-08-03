@@ -36,10 +36,9 @@ The model is split into the following modules:
 - `Lean4LeanModel.SetQuotient` and `Lean4LeanModel.Quotient` construct genuine quotients by the
   equivalence closure of an arbitrary relation, including proof-irrelevant `Prop` dispatch,
   soundness, lift computation, induction, and inaccessible-universe closure.
-- `Lean4LeanModel.QuotientModel` connects that construction to lean4lean's exact `Quot` declaration
-  and `Quot.mk` declaration, identifies the exact interpreted respect domain of `Quot.lift`, and
-  isolates the invariants needed to wire the remaining quotient primitives and computation rule
-  into the declaration model.
+- `Lean4LeanModel.QuotientModel`, `QuotientLiftModel`, `QuotientIndModel`, and
+  `QuotientDefEqModel` connect that construction to lean4lean's exact four quotient declarations
+  and generated computation rule.
 - `Lean4LeanModel.Upstream` is the audited adapter around lean4lean's currently sorried
   unique-typing and sort-inversion dependencies; CI rejects direct uses of that trust boundary
   elsewhere in the model.
@@ -76,11 +75,10 @@ canonical inductive interpretations; in particular, mere well-formedness does no
 interpretations of `Eq`, `Iff`, or `Nonempty`.
 Inductive declarations are genuinely blocked by the currently sorried upstream definitions. A
 genuine quotient construction is available and is proved compatible with `Quot.sound` at the
-semantic-operation level. The exact `Quot` and `Quot.mk` primitive types are validated, and the
-interpreted `Quot.lift` respect domain is proved equal to the truth value of its metatheoretic
-respect condition under canonical equality. Completing the `addQuot` environment step requires a
-history-induction motive (or stronger `ModelSetup`) carrying `ModelsEq` and `ModelsQuot`, validation
-of the remaining `Quot.lift` and `Quot.ind` types, and connection of the constructed beta rule to
-lean4lean's `quotDefEq`. The current `model_quotient_boundary` signature cannot provide those
-invariants: `QuotReady` records only that `Eq` is declared. Thus `addQuot` remains transitively
+semantic-operation level. All four exact quotient primitive types are validated, the interpreted
+`Quot.lift` respect domain is identified under canonical equality, and the constructed computation
+theorem is connected to lean4lean's generated `quotDefEq`. The canonical `addQuot` model step is
+therefore complete once the incoming assignment is known to model `Eq`. The current
+`model_quotient_boundary` signature cannot provide that invariant: `QuotReady` records only that
+`Eq` is declared. Thus `addQuot` remains transitively
 blocked on the pending canonical inductive interpretation of `Eq`, rather than on quotient theory.

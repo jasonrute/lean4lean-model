@@ -7,8 +7,8 @@ import Lean4Lean.Theory.Typing.Env
 These are the only local proof holes in the construction. The axiom theorem is retained solely for
 the backwards-compatible unrestricted statement; `model_of_wfHistory_standard` bypasses it via
 explicit meanings for the standard three. The inductive theorem is blocked by upstream `sorry`
-definitions. The quotient mathematics is complete, while its environment step still needs the
-canonical equality invariant and primitive computation-rule bridge. The holes are kept in a
+definitions. The quotient mathematics and exact generated-syntax bridges are complete, while its
+history step still needs the canonical equality invariant. The holes are kept in a
 dedicated module so CI can reject accidental proof debt everywhere else.
 -/
 
@@ -38,10 +38,9 @@ theorem model_inductive_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     ∃ assignment', ModelSetup κ env' assignment' := by
   sorry
 
-/-- The genuine quotient operations, their universe closure, exact `Quot` and `Quot.mk` types,
-and the exact respect domain needed by `Quot.lift` are constructed in `Quotient` and
-`QuotientModel`. Completing `addQuot` must wire all four constants and `quotDefEq` into
-`Assignment.WF` while carrying `ModelsEq` and `ModelsQuot` through the history induction.
+/-- The quotient operations, their universe closure, all four exact primitive types, and the
+generated `quotDefEq` computation rule are constructed and wired into the canonical `addQuot`
+model step. Applying that theorem here still requires carrying `ModelsEq` through history induction.
 
 This theorem's present signature cannot express that induction invariant: `ModelSetup` together
 with `VEnv.QuotReady` says only that `Eq` is declared, not that it has the canonical semantic

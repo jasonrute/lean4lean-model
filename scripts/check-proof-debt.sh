@@ -41,7 +41,11 @@ fi
 # local and upstream proof debt is still visible as `sorryAx` instead of being hidden by a new axiom.
 expected_axioms="'Lean4LeanModel.consistency' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
 'Lean4LeanModel.quotMkConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
-'Lean4LeanModel.quotRespectsType_eq' depends on axioms: [propext, Classical.choice, Quot.sound]"
+'Lean4LeanModel.quotRespectsType_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotLiftConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotIndConstValue_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.quotDefEq_valid' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
+'Lean4LeanModel.model_addQuot_canonical' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]"
 actual_axioms=$(lake env lean Lean4LeanModel/TrustAudit.lean 2>&1)
 if [[ "$actual_axioms" != "$expected_axioms" ]]; then
   echo 'The audited theorem trust base changed:' >&2

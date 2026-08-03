@@ -1,5 +1,5 @@
 import Lean4LeanModel.ModelConstruction
-import Lean4LeanModel.QuotientLiftModel
+import Lean4LeanModel.QuotientDefEqModel
 
 /-!
 # Installing quotient semantics
@@ -43,6 +43,19 @@ private theorem addConst_defeq_old' {env env' : VEnv} {name : Name} {ci : VConst
   split at hadd <;> try contradiction
   cases hadd
   exact hdf
+
+private theorem addQuot_le' {env env' : VEnv}
+    (hadd : env.addQuot = some env') : env ≤ env' := by
+  unfold VEnv.addQuot at hadd
+  rcases Option.bind_eq_some_iff.1 hadd with ⟨env₁, h₁, hadd⟩
+  rcases Option.bind_eq_some_iff.1 hadd with ⟨env₂, h₂, hadd⟩
+  rcases Option.bind_eq_some_iff.1 hadd with ⟨env₃, h₃, hadd⟩
+  rcases Option.bind_eq_some_iff.1 hadd with ⟨env₄, h₄, hadd⟩
+  simp only [Option.some.injEq] at hadd
+  subst env'
+  exact VEnv.LE.trans (VEnv.addConst_le h₁) (VEnv.LE.trans (VEnv.addConst_le h₂)
+    (VEnv.LE.trans (VEnv.addConst_le h₃)
+      (VEnv.LE.trans (VEnv.addConst_le h₄) VEnv.addDefEq_le)))
 
 /-- Semantic data for the completed `addQuot` environment. Keeping this interface in terms of the
 five generated objects makes it independent of how canonical equality is eventually obtained from
@@ -94,19 +107,17 @@ theorem Assignment.withCanonicalQuotients_modelsQuotPrimitives
   · intro n
     simp [Assignment.withCanonicalQuotients, Assignment.set, canonicalQuotIndMeaning]
 
-/-- Package the already-complete `Quot` and `Quot.mk` bridges with the three remaining exact
-declaration obligations. This is the narrow proof interface between the set construction and the
-bulk environment extension. -/
+/-- Package the exact declaration and computation-rule bridges for the canonical quotient
+assignment. This is the narrow proof interface between the set construction and the bulk
+environment extension. -/
 theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
     {assignment : Assignment.{u}} (henv : env.WF)
     (hi : ∀ n, (κ n).IsInaccessible)
     (hEqDecl : env.constants ``Eq = some eqConst)
     (hQuotDecl : env.constants ``Quot = some quotConst)
     (hMkDecl : env.constants ``Quot.mk = some quotMkConst)
-    (hEq : (assignment.withCanonicalQuotients κ).ModelsEq κ)
-    (hBeta : ∀ n m, interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
-      quotDefEq.lhs = interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
-        quotDefEq.rhs) :
+    (hLiftDecl : env.constants ``Quot.lift = some quotLiftConst)
+    (hEq : (assignment.withCanonicalQuotients κ).ModelsEq κ) :
     QuotientMeanings κ env (assignment.withCanonicalQuotients κ)
       (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
       (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ) := by
@@ -142,7 +153,8 @@ theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
     · rcases ns with _ | ⟨m, ns⟩
       · simp at hns
       · rcases ns with _ | ⟨k, ns⟩
-        · exact hBeta n m
+        · exact quotDefEq_valid henv hEqDecl hQuotDecl hMkDecl hLiftDecl hEq
+            (Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment) n m
         · simp at hns
 
 /-- Install all four quotient meanings and their beta rule in one semantic environment step. -/
@@ -247,20 +259,16 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
           simpa [hns] using show df.rhs.WF env df.uvars [] from ⟨df.type, hr⟩)
       exact hlExt.trans (hOld.trans hrExt.symm)
 
-/-- Complete the `addQuot` model step once the exact `Quot.lift`, `Quot.ind`, and beta bridges
-have been supplied. All environment bookkeeping and the `Quot`/`Quot.mk` bridges are discharged
-here. -/
+/-- Complete the `addQuot` model step using the canonical quotient assignment. The only semantic
+premise beyond the existing model is the canonical meaning of `Eq`. -/
 theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}} (M : ModelSetup κ env assignment)
-    (hadd : env.addQuot = some env') (henv' : env'.WF)
-    (hEqDecl : env'.constants ``Eq = some eqConst)
-    (hEq : assignment.ModelsEq κ)
-    (hBeta : ∀ n m, interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
-      quotDefEq.lhs = interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
-        quotDefEq.rhs) :
+    (hready : env.QuotReady) (hadd : env.addQuot = some env') (henv' : env'.WF)
+    (hEq : assignment.ModelsEq κ) :
     ModelSetup κ env' (assignment.withCanonicalQuotients κ) ∧
       (assignment.withCanonicalQuotients κ).ModelsQuotPrimitives κ := by
   refine ⟨?_, Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment⟩
+  have hEqDecl : env'.constants ``Eq = some eqConst := (addQuot_le' hadd).constants hready
   have hEq' : (assignment.withCanonicalQuotients κ).ModelsEq κ := hEq.congr (by
     intro ns
     simp [Assignment.withCanonicalQuotients, Assignment.set])
@@ -268,6 +276,7 @@ theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
     (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ)
   exact canonicalQuotientMeanings henv' M.cardinals_inaccessible hEqDecl
-    (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd) hEq' hBeta
+    (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd)
+    (VEnv.addQuot_quotLift hadd) hEq'
 
 end Lean4LeanModel
