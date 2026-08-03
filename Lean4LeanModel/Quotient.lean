@@ -351,6 +351,32 @@ theorem bullet_mem_quotInd_of_premise {n : Nat} {A : ZFSet.{u}}
   apply bullet_mem_quotInd
   exact bullet_mem_forallValue.1 h
 
+/-- Semantic predicates on a quotient. Predicates themselves are data-valued function graphs,
+while each fiber is a proof-irrelevant proposition. -/
+noncomputable def quotPredicateSpace (n : Nat) (A : ZFSet.{u})
+    (R : ZFSet.{u} → ZFSet.{u} → Prop) : ZFSet.{u} :=
+  depFuns (quotValue n A R) fun _ => propUniverse
+
+/-- The semantic type of `Quot.ind` at universe level `n`. -/
+noncomputable def quotIndTypeValue (κ : ℕ → Cardinal.{u}) (n : Nat) : ZFSet.{u} :=
+  forallValue (ModelUniverse κ n) fun A =>
+    forallValue (relationSpace A) fun r =>
+      forallValue (quotPredicateSpace n A (relationOfGraph r)) fun P =>
+        forallValue (quotIndPremise n A (relationOfGraph r) (depApp P)) fun _ =>
+          forallValue (quotValue n A (relationOfGraph r)) (depApp P)
+
+/-- Proof-irrelevant semantic value of the quotient induction primitive. -/
+noncomputable def quotIndConstValue : ZFSet.{u} := bullet
+
+theorem quotIndConstValue_mem {κ : ℕ → Cardinal.{u}} (n : Nat) :
+    quotIndConstValue ∈ quotIndTypeValue κ n := by
+  simp only [quotIndConstValue, quotIndTypeValue, bullet_mem_forallValue]
+  intro A _ r _ P _ c hprem
+  have hc : c = bullet := eq_bullet_of_mem_prop
+    (forallValue_mem_propUniverse A fun a => depApp P (quotMkValue n A (relationOfGraph r) a))
+    hprem
+  exact bullet_mem_forallValue.1 (bullet_mem_quotInd_of_premise (hc ▸ hprem))
+
 theorem quotLiftValue_smallAt {c : Cardinal.{u}} {n : Nat} {A : ZFSet.{u}}
     {R : ZFSet.{u} → ZFSet.{u} → Prop} {f : ZFSet.{u} → ZFSet.{u}}
     (hA : n = 0 → A ∈ (propUniverse : ZFSet.{u}))

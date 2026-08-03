@@ -59,6 +59,15 @@ def Assignment.ModelsQuot (κ : ℕ → Cardinal.{u}) (assignment : Assignment.{
   (∀ n, assignment.constVal ``Quot [n] = quotTypeValue κ n) ∧
   (∀ n, assignment.constVal ``Quot.mk [n] = quotMkConstValue κ n)
 
+/-- The complete semantic assignment of all four quotient primitives. `ModelsQuot` is the prefix
+available after installing `Quot` and `Quot.mk`; this stronger invariant describes the result of
+the complete `addQuot` operation. -/
+def Assignment.ModelsQuotPrimitives (κ : ℕ → Cardinal.{u})
+    (assignment : Assignment.{u}) : Prop :=
+  assignment.ModelsQuot κ ∧
+  (∀ n m, assignment.constVal ``Quot.lift [n, m] = quotLiftConstValue κ n m) ∧
+  (∀ n, assignment.constVal ``Quot.ind [n] = quotIndConstValue)
+
 theorem Assignment.ModelsQuot.congr {κ : ℕ → Cardinal.{u}}
     {assignment assignment' : Assignment.{u}} (hQuot : assignment.ModelsQuot κ)
     (h : ∀ c ns, c = ``Quot ∨ c = ``Quot.mk →
@@ -71,6 +80,20 @@ theorem Assignment.ModelsQuot.congr {κ : ℕ → Cardinal.{u}}
   · intro n
     rw [h ``Quot.mk [n] (Or.inr rfl)]
     exact hQuot.2 n
+
+theorem Assignment.ModelsQuotPrimitives.congr {κ : ℕ → Cardinal.{u}}
+    {assignment assignment' : Assignment.{u}} (hQuot : assignment.ModelsQuotPrimitives κ)
+    (h : ∀ c ns,
+      c = ``Quot ∨ c = ``Quot.mk ∨ c = ``Quot.lift ∨ c = ``Quot.ind →
+      assignment'.constVal c ns = assignment.constVal c ns) :
+    assignment'.ModelsQuotPrimitives κ := by
+  refine ⟨hQuot.1.congr fun c ns hc => h c ns (hc.elim Or.inl fun h => Or.inr (Or.inl h)), ?_, ?_⟩
+  · intro n m
+    rw [h ``Quot.lift [n, m] (Or.inr (Or.inr (Or.inl rfl)))]
+    exact hQuot.2.1 n m
+  · intro n
+    rw [h ``Quot.ind [n] (Or.inr (Or.inr (Or.inr rfl)))]
+    exact hQuot.2.2 n
 
 /-- The exact nested proposition used for the interpreted respect argument of `Quot.lift`.
 Unlike `QuotientRespects`, this keeps the proof of `r a b` as a semantic binder, just as the
