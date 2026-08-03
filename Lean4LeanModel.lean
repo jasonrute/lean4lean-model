@@ -5,6 +5,7 @@ import Lean4LeanModel.SetQuotient
 import Lean4LeanModel.Quotient
 import Lean4LeanModel.QuotientModel
 import Lean4LeanModel.QuotientIndModel
+import Lean4LeanModel.QuotientLiftModel
 import Lean4LeanModel.QuotientConstruction
 import Lean4LeanModel.StandardAxiomModel
 import Lean4LeanModel.StandardAxiomConstruction

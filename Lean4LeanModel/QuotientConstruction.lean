@@ -1,5 +1,5 @@
 import Lean4LeanModel.ModelConstruction
-import Lean4LeanModel.QuotientIndModel
+import Lean4LeanModel.QuotientLiftModel
 
 /-!
 # Installing quotient semantics
@@ -100,10 +100,10 @@ bulk environment extension. -/
 theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
     {assignment : Assignment.{u}} (henv : env.WF)
     (hi : ∀ n, (κ n).IsInaccessible)
+    (hEqDecl : env.constants ``Eq = some eqConst)
     (hQuotDecl : env.constants ``Quot = some quotConst)
     (hMkDecl : env.constants ``Quot.mk = some quotMkConst)
-    (hLift : ∀ n m, canonicalQuotLiftMeaning κ [n, m] ∈
-      interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] [] quotLiftConst.type)
+    (hEq : (assignment.withCanonicalQuotients κ).ModelsEq κ)
     (hBeta : ∀ n m, interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
       quotDefEq.lhs = interp κ env (assignment.withCanonicalQuotients κ) [n, m] [] []
         quotDefEq.rhs) :
@@ -127,7 +127,9 @@ theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
     · rcases ns with _ | ⟨m, ns⟩
       · simp at hns
       · rcases ns with _ | ⟨k, ns⟩
-        · simpa using hLift n m
+        · simpa [canonicalQuotLiftMeaning] using quotLiftConstValue_valid henv hEqDecl
+            hQuotDecl hEq
+            (Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment).1.1 n m
         · simp at hns
   · intro ns hns
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.1 hns
@@ -251,18 +253,21 @@ here. -/
 theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}} (M : ModelSetup κ env assignment)
     (hadd : env.addQuot = some env') (henv' : env'.WF)
-    (hLift : ∀ n m, canonicalQuotLiftMeaning κ [n, m] ∈
-      interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] [] quotLiftConst.type)
+    (hEqDecl : env'.constants ``Eq = some eqConst)
+    (hEq : assignment.ModelsEq κ)
     (hBeta : ∀ n m, interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
       quotDefEq.lhs = interp κ env' (assignment.withCanonicalQuotients κ) [n, m] [] []
         quotDefEq.rhs) :
     ModelSetup κ env' (assignment.withCanonicalQuotients κ) ∧
       (assignment.withCanonicalQuotients κ).ModelsQuotPrimitives κ := by
   refine ⟨?_, Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment⟩
+  have hEq' : (assignment.withCanonicalQuotients κ).ModelsEq κ := hEq.congr (by
+    intro ns
+    simp [Assignment.withCanonicalQuotients, Assignment.set])
   apply model_addQuot_sem M hadd henv'
     (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
     (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ)
-  exact canonicalQuotientMeanings henv' M.cardinals_inaccessible
-    (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd) hLift hBeta
+  exact canonicalQuotientMeanings henv' M.cardinals_inaccessible hEqDecl
+    (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd) hEq' hBeta
 
 end Lean4LeanModel
