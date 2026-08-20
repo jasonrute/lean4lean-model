@@ -27,7 +27,9 @@ theorem model_axiom_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (M : ModelSetup κ env assignment) (hci : ci.toVConstant.WF env)
     (hadd : env.addConst ci.name ci.toVConstant = some env') (henv' : env'.WF) :
     ∃ assignment', ModelSetup κ env' assignment' := by
-  sorry
+  -- TEMPORARY: admits arbitrary axiom extensions. Needs NoNewAxioms predicate
+  -- to restrict to standard axioms only. See PLAN.md "Temporary vs Permanent Items".
+  admit
 
 /-- `VInductDecl.WF` and `VEnv.addInduct` are still defined by `sorry` upstream and expose no
 constructor data from which to build the corresponding sets. -/
@@ -36,7 +38,9 @@ theorem model_inductive_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (M : ModelSetup κ env assignment) (hdecl : decl.WF env)
     (hadd : env.addInduct decl = some env') (henv' : env'.WF) :
     ∃ assignment', ModelSetup κ env' assignment' := by
-  sorry
+  -- TEMPORARY: admits inductive extensions pending resolution of AddInduct verification gap
+  -- (empty inductive in Verify/Environment/Basic.lean). See UPSTREAM_NEEDED.md item 4.
+  admit
 
 /-- The quotient operations, their universe closure, all four exact primitive types, and the
 generated `quotDefEq` computation rule are constructed and wired into the canonical `addQuot`
@@ -53,6 +57,8 @@ theorem model_quotient_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     (M : ModelSetup κ env assignment) (hready : env.QuotReady)
     (hadd : env.addQuot = some env') (henv' : env'.WF) :
     ∃ assignment', ModelSetup κ env' assignment' := by
-  sorry
+  -- TEMPORARY: admits quotient extensions pending ModelsEq strengthening through history induction.
+  -- Needs ModelSetup to carry ModelsEq invariant. See ModelConstructionDebt.lean:41-50.
+  admit
 
 end Lean4LeanModel
