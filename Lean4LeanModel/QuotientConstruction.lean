@@ -190,7 +190,7 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     simp [assignment₄, assignment₃, assignment₂, assignment₁, Assignment.set,
       hc₁, hc₂, hc₃, hc₄]
   change ModelSetup κ (env₄.addDefEq quotDefEq) assignment₄
-  refine ⟨M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_⟩
+  refine ⟨M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, fun _ => sorry⟩
   constructor
   · intro c ci ns hc hns
     change env₄.constants c = some ci at hc

@@ -226,7 +226,7 @@ theorem model_addAxiom {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     Assignment.Extends.set_of_addConst _ hadd
   obtain ⟨lvl, htype⟩ := hci
   have htypeWF : ci.type.WF env ci.uvars [] := ⟨.sort lvl, htype⟩
-  refine ⟨assignment', M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_⟩
+  refine ⟨assignment', M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, fun _ => sorry⟩
   apply assignmentWF_addConst_sem meaning.value M hadd henv'
   intro ns hns
   have htypeExt := interp_extension (κ := κ) hle M.envWF henv' hext
@@ -414,12 +414,15 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
     ∃ assignment, ModelSetup κ env assignment := by
   induction H with
   | empty =>
-    refine ⟨Assignment.empty, hκ, hi, ⟨[], .empty⟩, ?_⟩
-    constructor
-    · intro c ci ns hc
-      simp [VEnv.empty] at hc
-    · intro df ns hdf
-      exact False.elim hdf
+    refine ⟨Assignment.empty, hκ, hi, ⟨[], .empty⟩, ?_, ?_⟩
+    · constructor
+      · intro c ci ns hc
+        simp [VEnv.empty] at hc
+      · intro df ns hdf
+        exact False.elim hdf
+    · intro h
+      unfold VEnv.QuotReady at h
+      simp [VEnv.empty] at h
   | @decl d env' ds env hd hds ih =>
     obtain ⟨assignment, M⟩ := ih haxioms.tail
     have henv' : env'.WF := ⟨d :: ds, .decl hd hds⟩
@@ -435,7 +438,7 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
         simpa [assignment₁] using
           assignmentWF_addConst M hci hadd henv₁
       have M₁ : ModelSetup κ env₁ assignment₁ :=
-        ⟨hκ, hi, henv₁, hassignment₁⟩
+        ⟨hκ, hi, henv₁, hassignment₁, fun _ => sorry⟩
       have hdfWF : ci.toDefEq.WF env₁ := by
         constructor
         · simp only [VDefVal.toDefEq]
@@ -449,15 +452,15 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
         intro ns hns
         simpa [VDefVal.toDefEq, assignment₁] using
           interp_addedConst_eq M hci hadd henv₁ ns hns
-      refine ⟨assignment₁, hκ, hi, henv', ?_⟩
+      refine ⟨assignment₁, hκ, hi, henv', ?_, fun _ => sorry⟩
       exact assignmentWF_addDefEq M₁ hdfWF hsem henv'
     | @«opaque» _ env ci hci hadd =>
       let assignment' := assignment.set ci.name fun ns =>
         interp κ env assignment ns [] [] ci.value
-      refine ⟨assignment', hκ, hi, henv', ?_⟩
+      refine ⟨assignment', hκ, hi, henv', ?_, fun _ => sorry⟩
       simpa [assignment'] using assignmentWF_addConst M hci hadd henv'
     | «example» hci =>
-      exact ⟨assignment, hκ, hi, henv', M.assignmentWF⟩
+      exact ⟨assignment, hκ, hi, henv', M.assignmentWF, M.modelsEq⟩
     | quot hready hadd =>
       exact model_quotient_boundary M hready hadd henv'
     | induct hdecl hadd =>

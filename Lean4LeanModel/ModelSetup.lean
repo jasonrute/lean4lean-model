@@ -1,4 +1,5 @@
 import Lean4LeanModel.Context
+import Lean4LeanModel.Universe
 import Lean4Lean.Theory.Typing.EnvLemmas
 
 /-!
@@ -32,6 +33,9 @@ structure ModelSetup (κ : ℕ → Cardinal.{u}) (env : VEnv) (assignment : Assi
   cardinals_inaccessible : ∀ n, (κ n).IsInaccessible
   environmentWF : env.WF
   assignmentWF : assignment.WF κ env
+  modelsEq : env.QuotReady →
+    ∀ n, ∀ A ∈ ModelUniverse κ n, ∀ a ∈ A, ∀ b ∈ A,
+      depApp (depApp (depApp (assignment.constVal ``Eq [n]) A) a) b = truthValue (a = b)
 
 namespace ModelSetup
 
