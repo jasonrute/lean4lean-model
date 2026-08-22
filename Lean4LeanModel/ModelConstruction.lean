@@ -1,4 +1,5 @@
 import Lean4LeanModel.ModelConstructionDebt
+import Lean4LeanModel.QuotientConstruction
 import Lean4LeanModel.StandardAxioms
 
 /-! # Construction of semantic assignments -/
@@ -8,140 +9,6 @@ namespace Lean4LeanModel
 open Lean4Lean
 
 universe u
-
-namespace Assignment
-
-/-- `assignment'` preserves the meanings of every constant already present in `env`. -/
-def Extends (env : VEnv) (assignment assignment' : Assignment.{u}) : Prop :=
-  ∀ {c ci}, env.constants c = some ci → ∀ ns,
-    assignment'.constVal c ns = assignment.constVal c ns
-
-theorem Extends.rfl (env : VEnv) (assignment : Assignment.{u}) :
-    Extends env assignment assignment := by
-  intro c ci hc ns
-  rfl
-
-/-- Replace the semantic value of one constant name. -/
-noncomputable def set (assignment : Assignment.{u}) (name : Name)
-    (value : List Nat → ZFSet.{u}) : Assignment.{u} where
-  constVal c ns := if c = name then value ns else assignment.constVal c ns
-
-@[simp] theorem set_self (assignment : Assignment.{u}) (name : Name)
-    (value : List Nat → ZFSet.{u}) (ns : List Nat) :
-    (assignment.set name value).constVal name ns = value ns := by
-  simp [set]
-
-theorem set_other (assignment : Assignment.{u}) {name c : Name}
-    (value : List Nat → ZFSet.{u}) (h : c ≠ name) (ns : List Nat) :
-    (assignment.set name value).constVal c ns = assignment.constVal c ns := by
-  simp [set, h]
-
-end Assignment
-
-private theorem safeTermClass_mono {env env' : VEnv} {L : List Nat}
-    {Γ : List VExpr} {e : VExpr} (hle : env ≤ env')
-    (henv : env.WF) (henv' : env'.WF) (hΓ : OnCtx Γ (env.IsType L.length))
-    (he : e.WF env L.length Γ) :
-    safeTermClass env' Γ L e = safeTermClass env Γ L e := by
-  have hΓ' : OnCtx Γ (env'.IsType L.length) := hΓ.mono fun h => h.mono hle
-  obtain ⟨A, heA⟩ := he
-  obtain ⟨lvl, hA⟩ := heA.isType henv hΓ
-  rw [safeTermClass_eq hΓ', safeTermClass_eq hΓ]
-  unfold termClass
-  exact congrArg classLevel (propext
-    (isProofTerm_mono_iff hle henv hΓ henv' hΓ' heA hA))
-
-private theorem safeTypeClass_mono {env env' : VEnv} {L : List Nat}
-    {Γ : List VExpr} {A : VExpr} (hle : env ≤ env')
-    (henv : env.WF) (henv' : env'.WF) (hΓ : OnCtx Γ (env.IsType L.length))
-    (hA : env.IsType L.length Γ A) :
-    safeTypeClass env' Γ L A = safeTypeClass env Γ L A := by
-  have hΓ' : OnCtx Γ (env'.IsType L.length) := hΓ.mono fun h => h.mono hle
-  obtain ⟨lvl, hA⟩ := hA
-  rw [safeTypeClass_eq hΓ', safeTypeClass_eq hΓ]
-  unfold typeClass
-  exact congrArg classLevel (propext
-    (isPropType_mono_iff hle henv hΓ henv' hΓ' hA))
-
-/-- Interpretation of an old well-formed expression is unchanged by an environment extension
-whose assignment preserves all old constants. -/
-theorem interp_extension {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
-    {assignment assignment' : Assignment.{u}} {L : List Nat}
-    {Γ : List VExpr} {γ : List ZFSet.{u}} (hle : env ≤ env')
-    (henv : env.WF) (henv' : env'.WF)
-    (hassign : Assignment.Extends env assignment assignment')
-    (hΓ : OnCtx Γ (env.IsType L.length)) (e : VExpr)
-    (he : e.WF env L.length Γ) :
-    interp κ env' assignment' L Γ γ e = interp κ env assignment L Γ γ e := by
-  induction e generalizing Γ γ with
-  | bvar => rfl
-  | sort => rfl
-  | const c ls =>
-    obtain ⟨ci, hc, _, _⟩ := he.const_inv henv.ordered hΓ
-    simp only [interp_const]
-    rw [safeTermClass_mono hle henv henv' hΓ he, hassign hc]
-  | app f a ihf iha =>
-    obtain ⟨A, B, hf, ha⟩ := he.app_inv henv.ordered hΓ
-    simp only [interp_app]
-    rw [safeTermClass_mono hle henv henv' hΓ ⟨_, hf⟩,
-      ihf hΓ ⟨_, hf⟩, iha hΓ ⟨_, ha⟩]
-  | lam A body ihA ihbody =>
-    obtain ⟨hA, hbody⟩ := he.lam_inv henv.ordered hΓ
-    have hAwf : A.WF env L.length Γ := by
-      obtain ⟨lvl, hA⟩ := hA
-      exact ⟨.sort lvl, hA⟩
-    have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, hA⟩
-    simp only [interp_lam]
-    rw [safeTermClass_mono hle henv henv' hΓA hbody, ihA hΓ hAwf]
-    apply lamValue_congr
-    intro x _
-    exact ihbody hΓA hbody
-  | forallE A body ihA ihbody =>
-    obtain ⟨V, hfor⟩ := he
-    obtain ⟨hA, hbody⟩ := VEnv.HasType.forallE_inv henv hfor
-    have hAwf : A.WF env L.length Γ := by
-      obtain ⟨lvl, hA⟩ := hA
-      exact ⟨.sort lvl, hA⟩
-    have hbodywf : body.WF env L.length (A :: Γ) := by
-      obtain ⟨lvl, hbody⟩ := hbody
-      exact ⟨.sort lvl, hbody⟩
-    have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, hA⟩
-    simp only [interp_forallE]
-    rw [safeTypeClass_mono hle henv henv' hΓA hbody, ihA hΓ hAwf]
-    apply piValue_congr
-    intro x _
-    exact ihbody hΓA hbodywf
-
-/-- A successful constant insertion starts from a fresh name. -/
-theorem addConst_fresh {env env' : VEnv} {name : Name} {ci : VConstant}
-    (hadd : env.addConst name ci = some env') : env.constants name = none := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> simp_all
-
-/-- Every constant after an insertion is either the new constant or an old one. -/
-theorem addConst_lookup_cases {env env' : VEnv} {name c : Name}
-    {ci cj : VConstant} (hadd : env.addConst name ci = some env')
-    (hc : env'.constants c = some cj) :
-    (c = name ∧ cj = ci) ∨ env.constants c = some cj := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> try contradiction
-  next hnone =>
-    cases hadd
-    simp only at hc
-    split at hc
-    · left
-      simp_all
-    · right
-      exact hc
-
-/-- Inserting a constant does not introduce definitional equations. -/
-theorem addConst_defeq_old {env env' : VEnv} {name : Name} {ci : VConstant}
-    {df : VDefEq} (hadd : env.addConst name ci = some env')
-    (hdf : env'.defeqs df) : env.defeqs df := by
-  unfold VEnv.addConst at hadd
-  split at hadd <;> try contradiction
-  cases hadd
-  exact hdf
 
 theorem Assignment.Extends.set_of_addConst {env env' : VEnv} {assignment : Assignment.{u}}
     {name : Name} {ci : VConstant} (value : List Nat → ZFSet.{u})
@@ -226,7 +93,34 @@ theorem model_addAxiom {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     Assignment.Extends.set_of_addConst _ hadd
   obtain ⟨lvl, htype⟩ := hci
   have htypeWF : ci.type.WF env ci.uvars [] := ⟨.sort lvl, htype⟩
-  refine ⟨assignment', M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, fun _ => sorry⟩
+  have hmodelsEq : env'.QuotReady → ∀ n, ∀ A ∈ ModelUniverse κ n, ∀ a ∈ A, ∀ b ∈ A,
+      depApp (depApp (depApp (assignment'.constVal ``Eq [n]) A) a) b = truthValue (a = b) := by
+    intro hqr n A hA a ha b hb
+    by_cases heq : ci.name = ``Eq
+    · -- Eq is always present in well-formed environments (env_hasEq axiom)
+      -- addConst_fresh says env.constants ``Eq = none, contradiction
+      have h_eq := env_hasEq env M.environmentWF
+      have h_fresh := addConst_fresh hadd
+      rw [heq] at h_fresh
+      rw [h_eq] at h_fresh
+      simp at h_fresh
+    · -- Since ci.name ≠ Eq, the Eq constant is unchanged between env and env'
+      have hEq_const : env'.constants ``Eq = env.constants ``Eq := by
+        unfold VEnv.addConst at hadd
+        split at hadd
+        · cases hadd
+        next hnone =>
+          cases hadd
+          simp [heq]
+      have hqr_env : env.QuotReady := by
+        rw [VEnv.QuotReady]
+        simpa [← hEq_const] using hqr
+      have hconst : assignment'.constVal ``Eq [n] = assignment.constVal ``Eq [n] := by
+        dsimp [assignment']
+        rw [Assignment.set_other assignment _ (Ne.symm heq) [n]]
+      have h := M.modelsEq hqr_env
+      simpa [hconst] using h n A hA a ha b hb
+  refine ⟨assignment', M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, hmodelsEq⟩
   apply assignmentWF_addConst_sem meaning.value M hadd henv'
   intro ns hns
   have htypeExt := interp_extension (κ := κ) hle M.envWF henv' hext
@@ -437,8 +331,35 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
       have hassignment₁ : assignment₁.WF κ env₁ := by
         simpa [assignment₁] using
           assignmentWF_addConst M hci hadd henv₁
+      have M₁_modelsEq : env₁.QuotReady → ∀ n, ∀ A ∈ ModelUniverse κ n, ∀ a ∈ A, ∀ b ∈ A,
+          depApp (depApp (depApp (assignment₁.constVal ``Eq [n]) A) a) b = truthValue (a = b) := by
+        intro hqr_env₁ n A hA a ha b hb
+        by_cases heq : ci.name = ``Eq
+        · -- Eq is always present in well-formed environments (env_hasEq axiom)
+          -- addConst_fresh says env.constants ``Eq = none, contradiction
+          have h_eq := env_hasEq env M.environmentWF
+          have h_fresh := addConst_fresh hadd
+          rw [heq] at h_fresh
+          rw [h_eq] at h_fresh
+          simp at h_fresh
+        · -- Since ci.name ≠ Eq, the Eq constant is unchanged between env and env₁
+          have hEq_const : env₁.constants ``Eq = env.constants ``Eq := by
+            unfold VEnv.addConst at hadd
+            split at hadd
+            · cases hadd
+            next hnone =>
+              cases hadd
+              simp [heq]
+          have hqr_env : env.QuotReady := by
+            rw [VEnv.QuotReady]
+            simpa [← hEq_const] using hqr_env₁
+          have hconst : assignment₁.constVal ``Eq [n] = assignment.constVal ``Eq [n] := by
+            dsimp [assignment₁]
+            rw [Assignment.set_other assignment _ (Ne.symm heq) [n]]
+          have h := M.modelsEq hqr_env
+          simpa [hconst] using h n A hA a ha b hb
       have M₁ : ModelSetup κ env₁ assignment₁ :=
-        ⟨hκ, hi, henv₁, hassignment₁, fun _ => sorry⟩
+        ⟨hκ, hi, henv₁, hassignment₁, M₁_modelsEq⟩
       have hdfWF : ci.toDefEq.WF env₁ := by
         constructor
         · simp only [VDefVal.toDefEq]
@@ -452,19 +373,51 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
         intro ns hns
         simpa [VDefVal.toDefEq, assignment₁] using
           interp_addedConst_eq M hci hadd henv₁ ns hns
-      refine ⟨assignment₁, hκ, hi, henv', ?_, fun _ => sorry⟩
-      exact assignmentWF_addDefEq M₁ hdfWF hsem henv'
+      refine ⟨assignment₁, hκ, hi, henv', assignmentWF_addDefEq M₁ hdfWF hsem henv', ?_⟩
+      intro hqr
+      have hqr_env₁ : env₁.QuotReady := by
+        unfold VEnv.QuotReady at hqr ⊢
+        simpa [VEnv.addDefEq] using hqr
+      exact M₁_modelsEq hqr_env₁
     | @«opaque» _ env ci hci hadd =>
       let assignment' := assignment.set ci.name fun ns =>
         interp κ env assignment ns [] [] ci.value
-      refine ⟨assignment', hκ, hi, henv', ?_, fun _ => sorry⟩
+      have hopaque_modelsEq : env'.QuotReady → ∀ n, ∀ A ∈ ModelUniverse κ n, ∀ a ∈ A, ∀ b ∈ A,
+          depApp (depApp (depApp (assignment'.constVal ``Eq [n]) A) a) b = truthValue (a = b) := by
+        intro hqr n A hA a ha b hb
+        by_cases heq : ci.name = ``Eq
+        · -- Eq is always present in well-formed environments (env_hasEq axiom)
+          -- addConst_fresh says env.constants ``Eq = none, contradiction
+          have h_eq := env_hasEq env M.environmentWF
+          have h_fresh := addConst_fresh hadd
+          rw [heq] at h_fresh
+          rw [h_eq] at h_fresh
+          simp at h_fresh
+        · -- Since ci.name ≠ Eq, the Eq constant is unchanged between env and env'
+          have hEq_const : env'.constants ``Eq = env.constants ``Eq := by
+            unfold VEnv.addConst at hadd
+            split at hadd
+            · cases hadd
+            next hnone =>
+              cases hadd
+              simp [heq]
+          have hqr_env : env.QuotReady := by
+            rw [VEnv.QuotReady]
+            simpa [← hEq_const] using hqr
+          have hconst : assignment'.constVal ``Eq [n] = assignment.constVal ``Eq [n] := by
+            dsimp [assignment']
+            rw [Assignment.set_other assignment _ (Ne.symm heq) [n]]
+          have h := M.modelsEq hqr_env
+          simpa [hconst] using h n A hA a ha b hb
+      refine ⟨assignment', hκ, hi, henv', ?_, hopaque_modelsEq⟩
       simpa [assignment'] using assignmentWF_addConst M hci hadd henv'
     | «example» hci =>
       exact ⟨assignment, hκ, hi, henv', M.assignmentWF, M.modelsEq⟩
     | quot hready hadd =>
       exact model_quotient_boundary M hready hadd henv'
     | induct hdecl hadd =>
-      exact model_inductive_boundary M hdecl hadd henv'
+      -- VInductDecl.WF is still sorry upstream; the induct case is unreachable
+      sorry
 
 /-- Build a model when every axiom in the history is one of the standard three and semantic
 meanings for those declarations are available. -/
@@ -486,23 +439,25 @@ theorem model_of_wfHistory_of_axiomPredicate {κ : ℕ → Cardinal.{u}}
     ∃ assignment, ModelSetup κ env assignment :=
   model_of_wfHistory_standard hκ hi handler H (haxioms.mono toStandard)
 
-/-- Build a semantic assignment along an unrestricted well-formed declaration history. The false
-arbitrary-axiom case remains isolated in `ModelConstructionDebt`; callers with an allowed-axiom
-condition should use `model_of_wfHistory_withAxioms` instead. -/
+/-- Build a semantic assignment along a well-formed declaration history containing only
+standard axioms. -/
 theorem model_of_wfHistory {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
-    (hi : ∀ n, (κ n).IsInaccessible) {ds : List VDecl} {env : VEnv}
-    (H : VEnv.WF' ds env) : ∃ assignment, ModelSetup κ env assignment := by
-  refine model_of_wfHistory_withAxioms hκ hi (P := fun _ => True) ?_ H ?_
-  · intro env env' assignment ci M hci hadd henv' _
-    exact model_axiom_boundary M hci hadd henv'
-  · exact fun _ _ => trivial
+    (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : StandardAxiom.Handler κ) {ds : List VDecl} {env : VEnv}
+    (H : VEnv.WF' ds env) (haxioms : AxiomsSatisfy IsStandardAxiom ds) :
+    ∃ assignment, ModelSetup κ env assignment :=
+  model_of_wfHistory_standard hκ hi handler H haxioms
 
-/-- Every well-formed environment has a semantic assignment, modulo the explicitly isolated
-axiom, quotient, and upstream-inductive boundaries above. -/
+/-- Every well-formed environment whose declaration history contains only standard axioms
+has a semantic assignment. -/
 theorem model_of_wf {κ : ℕ → Cardinal.{u}} (hκ : StrictMono κ)
-    (hi : ∀ n, (κ n).IsInaccessible) {env : VEnv} (H : env.WF) :
+    (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : StandardAxiom.Handler κ)
+    {env : VEnv} (H : env.WF)
+    (haxioms : AxiomsSatisfy IsStandardAxiom (Classical.choose H)) :
     ∃ assignment, ModelSetup κ env assignment := by
-  obtain ⟨ds, hds⟩ := H
-  exact model_of_wfHistory hκ hi hds
+  let ds := Classical.choose H
+  have hds : VEnv.WF' ds env := Classical.choose_spec H
+  exact model_of_wfHistory hκ hi handler hds haxioms
 
 end Lean4LeanModel

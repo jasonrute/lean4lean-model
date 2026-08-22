@@ -1,4 +1,4 @@
-import Lean4LeanModel.ModelConstruction
+import Lean4LeanModel.Fundamental
 import Lean4LeanModel.QuotientDefEqModel
 
 /-!
@@ -132,7 +132,7 @@ theorem canonicalQuotientMeanings {κ : ℕ → Cardinal.{u}} {env : VEnv}
 /-- Install all four quotient meanings and their beta rule in one semantic environment step. -/
 theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     {assignment : Assignment.{u}} (M : ModelSetup κ env assignment)
-    (hadd : env.addQuot = some env') (henv' : env'.WF)
+    (hready : env.QuotReady) (hadd : env.addQuot = some env') (henv' : env'.WF)
     (quot quotMk quotLift quotInd : List Nat → ZFSet.{u})
     (meanings : QuotientMeanings κ env'
       ((((assignment.set ``Quot quot).set ``Quot.mk quotMk).set
@@ -190,7 +190,15 @@ theorem model_addQuot_sem {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     simp [assignment₄, assignment₃, assignment₂, assignment₁, Assignment.set,
       hc₁, hc₂, hc₃, hc₄]
   change ModelSetup κ (env₄.addDefEq quotDefEq) assignment₄
-  refine ⟨M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, fun _ => sorry⟩
+  have hmodelsEq : (env₄.addDefEq quotDefEq).QuotReady → ∀ n, ∀ A ∈ ModelUniverse κ n, ∀ a ∈ A, ∀ b ∈ A,
+      depApp (depApp (depApp (assignment₄.constVal ``Eq [n]) A) a) b = truthValue (a = b) := by
+    intro _ n A hA a ha b hb
+    -- addQuot only adds Quot* constants (not Eq), so the Eq constant is unchanged
+    have hconst : assignment₄.constVal ``Eq [n] = assignment.constVal ``Eq [n] := by
+      simp [assignment₄, assignment₃, assignment₂, assignment₁, Assignment.set]
+    have h := M.modelsEq hready
+    simpa [hconst] using h n A hA a ha b hb
+  refine ⟨M.cardinals_strictMono, M.cardinals_inaccessible, henv', ?_, hmodelsEq⟩
   constructor
   · intro c ci ns hc hns
     change env₄.constants c = some ci at hc
@@ -246,11 +254,24 @@ theorem model_addQuot_canonical {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
     intro ns
     simp [Assignment.withCanonicalQuotients, Assignment.set])
   refine ⟨?_, hEq', Assignment.withCanonicalQuotients_modelsQuotPrimitives assignment⟩
-  apply model_addQuot_sem M hadd henv'
+  apply model_addQuot_sem M hready hadd henv'
     (canonicalQuotMeaning κ) (canonicalQuotMkMeaning κ)
     (canonicalQuotLiftMeaning κ) (canonicalQuotIndMeaning κ)
   exact canonicalQuotientMeanings henv' M.cardinals_inaccessible hEqDecl
     (VEnv.addQuot_quot hadd) (VEnv.addQuot_quotMk hadd)
     (VEnv.addQuot_quotLift hadd) hEq'
+
+/-- The quotient operations, their universe closure, all four exact primitive types, and the
+generated `quotDefEq` computation rule are constructed and wired into the canonical `addQuot`
+model step. `model_addQuot_canonical` in this file already has a fully filled `modelsEq` proof.
+-/
+theorem model_quotient_boundary {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
+    {assignment : Assignment.{u}}
+    (M : ModelSetup κ env assignment) (hready : env.QuotReady)
+    (hadd : env.addQuot = some env') (henv' : env'.WF) :
+    ∃ assignment', ModelSetup κ env' assignment' := by
+  have hEq : assignment.ModelsEq κ := M.modelsEq hready
+  have h := model_addQuot_canonical M hready hadd henv' hEq
+  exact ⟨assignment.withCanonicalQuotients κ, h.1⟩
 
 end Lean4LeanModel

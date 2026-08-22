@@ -327,4 +327,145 @@ theorem fundamental_hasType {κ : ℕ → Cardinal.{u}} {env : VEnv}
     interp κ env assignment L Γ γ e ∈ interp κ env assignment L Γ γ A :=
   (fundamental M H hΓ hγ).mem
 
+/-! ## Shared assignment infrastructure
+
+These definitions were moved from `ModelConstruction.lean` to break an import cycle
+between `ModelConstruction` and `QuotientConstruction`. They are fundamental semantic
+properties used by both the assignment construction and the quotient construction.
+-/
+
+namespace Assignment
+
+/-- `assignment'` preserves the meanings of every constant already present in `env`. -/
+def Extends (env : VEnv) (assignment assignment' : Assignment.{u}) : Prop :=
+  ∀ {c ci}, env.constants c = some ci → ∀ ns,
+    assignment'.constVal c ns = assignment.constVal c ns
+
+theorem Extends.rfl (env : VEnv) (assignment : Assignment.{u}) :
+    Extends env assignment assignment := by
+  intro c ci hc ns
+  rfl
+
+/-- Replace the semantic value of one constant name. -/
+noncomputable def set (assignment : Assignment.{u}) (name : Name)
+    (value : List Nat → ZFSet.{u}) : Assignment.{u} where
+  constVal c ns := if c = name then value ns else assignment.constVal c ns
+
+@[simp] theorem set_self (assignment : Assignment.{u}) (name : Name)
+    (value : List Nat → ZFSet.{u}) (ns : List Nat) :
+    (assignment.set name value).constVal name ns = value ns := by
+  simp [set]
+
+theorem set_other (assignment : Assignment.{u}) {name c : Name}
+    (value : List Nat → ZFSet.{u}) (h : c ≠ name) (ns : List Nat) :
+    (assignment.set name value).constVal c ns = assignment.constVal c ns := by
+  simp [set, h]
+
+end Assignment
+
+theorem safeTermClass_mono {env env' : VEnv} {L : List Nat}
+    {Γ : List VExpr} {e : VExpr} (hle : env ≤ env')
+    (henv : env.WF) (henv' : env'.WF) (hΓ : OnCtx Γ (env.IsType L.length))
+    (he : e.WF env L.length Γ) :
+    safeTermClass env' Γ L e = safeTermClass env Γ L e := by
+  have hΓ' : OnCtx Γ (env'.IsType L.length) := hΓ.mono fun h => h.mono hle
+  obtain ⟨A, heA⟩ := he
+  obtain ⟨lvl, hA⟩ := heA.isType henv hΓ
+  rw [safeTermClass_eq hΓ', safeTermClass_eq hΓ]
+  unfold termClass
+  exact congrArg classLevel (propext
+    (isProofTerm_mono_iff hle henv hΓ henv' hΓ' heA hA))
+
+theorem safeTypeClass_mono {env env' : VEnv} {L : List Nat}
+    {Γ : List VExpr} {A : VExpr} (hle : env ≤ env')
+    (henv : env.WF) (henv' : env'.WF) (hΓ : OnCtx Γ (env.IsType L.length))
+    (hA : env.IsType L.length Γ A) :
+    safeTypeClass env' Γ L A = safeTypeClass env Γ L A := by
+  have hΓ' : OnCtx Γ (env'.IsType L.length) := hΓ.mono fun h => h.mono hle
+  obtain ⟨lvl, hA⟩ := hA
+  rw [safeTypeClass_eq hΓ', safeTypeClass_eq hΓ]
+  unfold typeClass
+  exact congrArg classLevel (propext
+    (isPropType_mono_iff hle henv hΓ henv' hΓ' hA))
+
+/-- Interpretation of an old well-formed expression is unchanged by an environment extension
+whose assignment preserves all old constants. -/
+theorem interp_extension {κ : ℕ → Cardinal.{u}} {env env' : VEnv}
+    {assignment assignment' : Assignment.{u}} {L : List Nat}
+    {Γ : List VExpr} {γ : List ZFSet.{u}} (hle : env ≤ env')
+    (henv : env.WF) (henv' : env'.WF)
+    (hassign : Assignment.Extends env assignment assignment')
+    (hΓ : OnCtx Γ (env.IsType L.length)) (e : VExpr)
+    (he : e.WF env L.length Γ) :
+    interp κ env' assignment' L Γ γ e = interp κ env assignment L Γ γ e := by
+  induction e generalizing Γ γ with
+  | bvar => rfl
+  | sort => rfl
+  | const c ls =>
+    obtain ⟨ci, hc, _, _⟩ := he.const_inv henv.ordered hΓ
+    simp only [interp_const]
+    rw [safeTermClass_mono hle henv henv' hΓ he, hassign hc]
+  | app f a ihf iha =>
+    obtain ⟨A, B, hf, ha⟩ := he.app_inv henv.ordered hΓ
+    simp only [interp_app]
+    rw [safeTermClass_mono hle henv henv' hΓ ⟨_, hf⟩,
+      ihf hΓ ⟨_, hf⟩, iha hΓ ⟨_, ha⟩]
+  | lam A body ihA ihbody =>
+    obtain ⟨hA, hbody⟩ := he.lam_inv henv.ordered hΓ
+    have hAwf : A.WF env L.length Γ := by
+      obtain ⟨lvl, hA⟩ := hA
+      exact ⟨.sort lvl, hA⟩
+    have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, hA⟩
+    simp only [interp_lam]
+    rw [safeTermClass_mono hle henv henv' hΓA hbody, ihA hΓ hAwf]
+    apply lamValue_congr
+    intro x _
+    exact ihbody hΓA hbody
+  | forallE A body ihA ihbody =>
+    obtain ⟨V, hfor⟩ := he
+    obtain ⟨hA, hbody⟩ := VEnv.HasType.forallE_inv henv hfor
+    have hAwf : A.WF env L.length Γ := by
+      obtain ⟨lvl, hA⟩ := hA
+      exact ⟨.sort lvl, hA⟩
+    have hbodywf : body.WF env L.length (A :: Γ) := by
+      obtain ⟨lvl, hbody⟩ := hbody
+      exact ⟨.sort lvl, hbody⟩
+    have hΓA : OnCtx (A :: Γ) (env.IsType L.length) := ⟨hΓ, hA⟩
+    simp only [interp_forallE]
+    rw [safeTypeClass_mono hle henv henv' hΓA hbody, ihA hΓ hAwf]
+    apply piValue_congr
+    intro x _
+    exact ihbody hΓA hbodywf
+
+/-- A successful constant insertion starts from a fresh name. -/
+theorem addConst_fresh {env env' : VEnv} {name : Name} {ci : VConstant}
+    (hadd : env.addConst name ci = some env') : env.constants name = none := by
+  unfold VEnv.addConst at hadd
+  split at hadd <;> simp_all
+
+/-- Every constant after an insertion is either the new constant or an old one. -/
+theorem addConst_lookup_cases {env env' : VEnv} {name c : Name}
+    {ci cj : VConstant} (hadd : env.addConst name ci = some env')
+    (hc : env'.constants c = some cj) :
+    (c = name ∧ cj = ci) ∨ env.constants c = some cj := by
+  unfold VEnv.addConst at hadd
+  split at hadd <;> try contradiction
+  next hnone =>
+    cases hadd
+    simp only at hc
+    split at hc
+    · left
+      simp_all
+    · right
+      exact hc
+
+/-- Inserting a constant does not introduce definitional equations. -/
+theorem addConst_defeq_old {env env' : VEnv} {name : Name} {ci : VConstant}
+    {df : VDefEq} (hadd : env.addConst name ci = some env')
+    (hdf : env'.defeqs df) : env.defeqs df := by
+  unfold VEnv.addConst at hadd
+  split at hadd <;> try contradiction
+  cases hadd
+  exact hdf
+
 end Lean4LeanModel

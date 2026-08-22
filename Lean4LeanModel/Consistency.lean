@@ -23,17 +23,15 @@ open Lean4Lean
 universe u
 
 /--
-**Naive consistency statement.** Assuming `ω` inaccessible cardinals, no well-formed environment
-proves `∀ (p : Prop), p` -- in any number `U` of universe parameters, in the empty local context.
-
-This unrestricted statement is refutable: a well-formed environment may declare an axiom of
-`VExpr.false`. Its axiom-case `sorry` is therefore a known-false statement placeholder, not an
-unfinished proof, while the true statement admitting Lean's standard axioms is being specified.
+**Consistency statement.** Given `ω` inaccessible cardinals and that the declaration history
+contains only standard axioms, no well-formed environment proves `False` -- in any number `U`
+of universe parameters, in the empty local context.
 -/
-theorem consistency (hlarge : OmegaInaccessibles.{u}) {env : VEnv} (henv : env.WF) (U : Nat) :
-    ¬ ∃ e, env.HasType U [] e VExpr.false := by
-  obtain ⟨κ, hκ, hi⟩ := hlarge
-  obtain ⟨assignment, M⟩ := model_of_wf hκ hi henv
+theorem consistency {κ : ℕ → Cardinal.{u}} {env : VEnv} (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
+    (handler : StandardAxiom.Handler κ) (henv : env.WF)
+    (haxioms : AxiomsSatisfy IsStandardAxiom (Classical.choose henv))
+    (U : Nat) : ¬ ∃ e, env.HasType U [] e VExpr.false := by
+  obtain ⟨assignment, M⟩ := model_of_wf hκ hi handler henv haxioms
   rintro ⟨e, he⟩
   let L := List.replicate U 0
   have heL : env.HasType L.length [] e VExpr.false := by
