@@ -415,7 +415,6 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
       exact ⟨assignment, hκ, hi, henv', M.assignmentWF, M.modelsEq⟩
     | quot hready hadd =>
       exact model_quotient_boundary M hready hadd henv'
-    | induct _ _ => nomatch ‹_›
 
 /-- Build a model when every axiom in the history is one of the standard three and semantic
 meanings for those declarations are available. -/
