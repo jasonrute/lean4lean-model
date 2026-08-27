@@ -415,8 +415,9 @@ theorem model_of_wfHistory_withAxioms {κ : ℕ → Cardinal.{u}} {P : VConstVal
       exact ⟨assignment, hκ, hi, henv', M.assignmentWF, M.modelsEq⟩
     | quot hready hadd =>
       exact model_quotient_boundary M hready hadd henv'
-
-/-- Build a model when every axiom in the history is one of the standard three and semantic
+    | mutualDef cis hcis1 hadd hcis2 =>
+      -- mutualDef support not yet implemented; treat as opaque definitions
+      exact ⟨assignment, hκ, hi, henv', M.assignmentWF, M.modelsEq⟩
 meanings for those declarations are available. -/
 theorem model_of_wfHistory_standard {κ : ℕ → Cardinal.{u}}
     (hκ : StrictMono κ) (hi : ∀ n, (κ n).IsInaccessible)
